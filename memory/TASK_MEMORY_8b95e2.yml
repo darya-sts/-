@@ -1,7 +1,7 @@
 task_id: 8b95e2-hello-http-service
-current_execution_id: 3
+current_execution_id: 6
 started_at: "2026-08-25T08:25:26Z"
-finished_at: null
+finished_at: "2026-08-25T08:36:02Z"
 
 executions:
   - id: 1
@@ -343,5 +343,144 @@ executions:
       ## Тесты
       - Команда: python3 -m unittest discover -s tests -v (интерпретатор python в PATH отсутствует, python3 3.12.3)
       - Результат: Ran 17 tests, OK
+    status: done
+
+  - id: 4
+    parent_execution_id: 3
+    agent_type: code-review
+    started_at: "2026-08-25T08:31:15Z"
+    finished_at: "2026-08-25T08:32:40Z"
+    output_data: |
+      ## Решение: Approve
+
+      Реализация соответствует архитектурному документу (execution 2): чистая функция `handle_request`, контракт JSON/статусов/заголовков, bind HOST/PORT, адаптер `http.server`, тесты без сокета. Критических и серьёзных проблем нет.
+
+      ## Проверенные файлы
+      - app/__init__.py — ok (реэкспорт Response, handle_request)
+      - app/handler.py — ok (маршруты FR-2…FR-4, лимит имени 256, компактный UTF-8 JSON, заголовки Content-Type / Content-Length / Connection: close, Allow: GET при 405)
+      - app/__main__.py — ok (HTTPServer, do_* → _dispatch, parse_bind, Serving on …, SIGINT/SIGTERM, лог METHOD PATH STATUS без query)
+      - tests/__init__.py — ok
+      - tests/test_handler.py — ok (минимум архитектора покрыт через handle_request, порт 8000 не занимается)
+      - README.md — ok (описание, Python 3.11+/stdlib, запуск, curl, тесты; оркестратор не описан)
+
+      ## Замечания (некритичные, для сведения разработчика)
+      - README и архитектура фиксируют `python -m app` / `python -m unittest …`. В этой VM в PATH есть `python3`, но нет `python` — это среда, не ошибка контракта.
+      - Пример `name=Alice&name=Bob` (первое значение) реализован через parse_qs, отдельным тестом не покрыт.
+      - Тесты не проверяют байтовый Content-Length и заголовок Connection: close; в handler они выставляются.
+
+      ## Следующий этап: testing
+    status: done
+
+  - id: 5
+    parent_execution_id: 4
+    agent_type: testing
+    started_at: "2026-08-25T08:32:50Z"
+    finished_at: "2026-08-25T08:33:29Z"
+    output_data: |
+      ## Результат: Тесты прошли
+
+      Существующий suite `tests/test_handler.py` зелёный. Минимум FR-6 и список архитектора покрыты через `handle_request` без сокета и без порта 8000. Багов в реализации по этим проверкам не найдено.
+
+      ## Результат запуска
+
+      Команда: `python3 -m unittest discover -s tests -v`
+
+      ```
+      test_delete_hello_method_not_allowed ... ok
+      test_health_ok ... ok
+      test_hello_default_world ... ok
+      test_hello_empty_name ... ok
+      test_hello_name_alice ... ok
+      test_hello_name_max_length ... ok
+      test_hello_name_too_long ... ok
+      test_hello_unicode_name ... ok
+      test_hello_whitespace_name_percent20 ... ok
+      test_hello_whitespace_name_plus ... ok
+      test_post_health_method_not_allowed ... ok
+      test_post_hello_method_not_allowed ... ok
+      test_put_health_method_not_allowed ... ok
+      test_trailing_slash_health ... ok
+      test_trailing_slash_hello ... ok
+      test_unknown_path ... ok
+      test_unknown_root ... ok
+      ----------------------------------------------------------------------
+      Ran 17 tests in 0.001s
+      OK
+      ```
+
+      Все тесты прошли: 17 passed, 0 failed.
+
+      ## Покрытие требований
+
+      Существующие тесты (`tests/test_handler.py`, класс `HandleRequestTests`):
+
+      - [FR-1] HTTP-сервис на stdlib — косвенно: чистый handler без pip; интеграционный подъём `HTTPServer` в suite не требуется (архитектор: тесты без сокета).
+      - [FR-2] GET /health — покрыто (`test_health_ok`: 200, Content-Type, тело `{"status":"ok"}` и компактные байты). Не-GET: `test_post_health_method_not_allowed`, `test_put_health_method_not_allowed`.
+      - [FR-3] GET /hello — покрыто: без name (`test_hello_default_world`); Alice (`test_hello_name_alice`); пустой/пробельный name (`test_hello_empty_name`, `test_hello_whitespace_name_percent20`, `test_hello_whitespace_name_plus`); Unicode URL-decode (`test_hello_unicode_name`). Не-GET: `test_post_hello_method_not_allowed`, `test_delete_hello_method_not_allowed`.
+      - [FR-4] 404/405 — покрыто: `/` и `/nope` (`test_unknown_root`, `test_unknown_path`); trailing slash (`test_trailing_slash_health`, `test_trailing_slash_hello`); 405 + Allow содержит GET (POST/PUT health, POST/DELETE hello).
+      - [FR-5] Точка входа HOST/PORT/сигналы — процессный контракт, не unit-suite; по архитектуре не обязателен в этом проходе.
+      - [FR-6] Набор unittest — выполнен: все пункты минимума зелёные, детерминированно, без порта 8000.
+      - [FR-7] README — не юнит-тест; ревью Approve.
+      - [NFR-3] Лимит имени 256 — покрыто (`test_hello_name_max_length` 200, `test_hello_name_too_long` 400).
+
+      Пробелы (не блокируют docs; опционально для development позже):
+      - повторный `name=Alice&name=Bob` (первое значение);
+      - query на `/health` игнорируется;
+      - JSON-экранирование спецсимволов в имени;
+      - заголовки `Content-Length` и `Connection: close`;
+      - метод в нижнем регистре (`get`).
+
+      ## Предложенные тесты (текст для development; на диск не записывались)
+
+      Файл: `tests/test_handler.py` — дополнительные методы в `HandleRequestTests`. Существующий suite уже достаточен для FR-6; это усиление покрытия, не дефект.
+
+      ```python
+      def test_health_ignores_query(self):
+          resp = handle_request("GET", "/health", "foo=bar&name=x")
+          self.assertEqual(resp.status, 200)
+          self.assertEqual(_payload(resp), {"status": "ok"})
+
+      def test_hello_first_name_wins(self):
+          resp = handle_request("GET", "/hello", "name=Alice&name=Bob")
+          self.assertEqual(resp.status, 200)
+          self.assertEqual(_payload(resp), {"message": "Hello, Alice!"})
+
+      def test_hello_json_escapes_quotes(self):
+          resp = handle_request("GET", "/hello", 'name=A%22B')
+          self.assertEqual(resp.status, 200)
+          self.assertEqual(_payload(resp), {"message": 'Hello, A"B!'})
+          self.assertEqual(resp.body, b'{"message":"Hello, A\\"B!"}')
+
+      def test_response_headers_content_length_and_connection(self):
+          resp = handle_request("GET", "/health", "")
+          self.assertEqual(resp.headers["Content-Length"], str(len(resp.body)))
+          self.assertEqual(resp.headers["Connection"], "close")
+
+      def test_method_case_insensitive_get(self):
+          resp = handle_request("get", "/health", "")
+          self.assertEqual(resp.status, 200)
+          self.assertEqual(_payload(resp), {"status": "ok"})
+      ```
+
+      ## Следующий этап: tech-writer
+    status: done
+
+  - id: 6
+    parent_execution_id: 5
+    agent_type: tech-writer
+    started_at: "2026-08-25T08:34:30Z"
+    finished_at: "2026-08-25T08:35:38Z"
+    output_data: |
+      ## Результат: Done
+
+      ## Созданные документы
+      - docs/8b95e2-hello-http-service/architecture.md — архитектура системы
+      - docs/8b95e2-hello-http-service/changelog.md — история изменений
+      - docs/8b95e2-hello-http-service/issues.md — реестр проблем
+
+      ## Источники
+      - Проанализировано executions: 6
+      - Git коммитов охвачено: 3 (по файлам реализации: 2)
+      - Зафиксировано проблем: 0
     status: done
 
