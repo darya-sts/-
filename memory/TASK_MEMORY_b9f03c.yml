@@ -1,0 +1,13 @@
+task_id: b9f03c-telegram-ai-chatbot
+current_execution_id: 1
+started_at: null
+finished_at: null
+
+executions:
+  - id: 1
+    parent_execution_id: null
+    agent_type: analysis
+    started_at: null
+    finished_at: null
+    output_data: ""
+    status: new
