@@ -1,0 +1,486 @@
+task_id: 8b95e2-hello-http-service
+current_execution_id: 6
+started_at: "2026-08-25T08:25:26Z"
+finished_at: "2026-08-25T08:36:02Z"
+
+executions:
+  - id: 1
+    parent_execution_id: null
+    agent_type: analysis
+    started_at: "2026-08-25T08:25:26Z"
+    finished_at: "2026-08-25T08:25:51Z"
+    output_data: |
+      ## Цель
+      Инициализировать сейчас пустой репозиторий (кроме README.md и skills оркестратора) как минимальный рабочий HTTP-сервис на Python только со стандартной библиотекой. Сервис должен быть достаточно простым и воспроизводимым, чтобы Cloud Agents могли дальше разрабатывать и проверять код в этом репозитории без установки внешних пакетов.
+
+      ## Функциональные требования
+
+      ### FR-1. HTTP-сервис
+      - Приложение — HTTP-сервер, запускаемый локально одной командой Python.
+      - Только стандартная библиотека Python. Запрещены pip-зависимости, requirements.txt с пакетами, venv как обязательный шаг.
+      - Слушает TCP-порт и обрабатывает HTTP/1.1 запросы.
+
+      ### FR-2. GET /health — проверка живости
+      - Метод: только GET.
+      - Путь: точно `/health` (без завершающего слэша как канонический путь).
+      - Query-параметры игнорируются.
+      - Успешный ответ:
+        - HTTP 200
+        - Content-Type: application/json; charset=utf-8
+        - Тело: `{"status":"ok"}`
+      - Назначение: машинная проверка, что процесс жив и отвечает (liveness). Не ходит во внешние системы, не проверяет диск/БД.
+
+      ### FR-3. GET /hello — приветствие
+      - Метод: только GET.
+      - Путь: точно `/hello`.
+      - Query-параметр `name` (опциональный):
+        - если `name` отсутствует, пустая строка после trim, или состоит только из пробелов — использовать значение `World`;
+        - если передан — взять первое значение параметра, URL-decode (UTF-8), trim пробелов по краям;
+        - при повторных `name=` использовать первое значение.
+      - Успешный ответ:
+        - HTTP 200
+        - Content-Type: application/json; charset=utf-8
+        - Тело: `{"message":"Hello, <name>!"}`, где `<name>` — выбранное имя, JSON-экранированное.
+      - Примеры:
+        - `GET /hello` → `{"message":"Hello, World!"}`
+        - `GET /hello?name=` → `{"message":"Hello, World!"}`
+        - `GET /hello?name=Alice` → `{"message":"Hello, Alice!"}`
+        - `GET /hello?name=%D0%9C%D0%B8%D1%80` → `{"message":"Hello, Мир!"}`
+
+      ### FR-4. Ошибки маршрутизации и методов
+      - Неизвестный путь → HTTP 404, Content-Type: application/json; charset=utf-8, тело `{"error":"not found"}`.
+      - Известный путь, но метод не GET (POST/PUT/PATCH/DELETE/HEAD/OPTIONS и т.д.) → HTTP 405, заголовок `Allow: GET`, тело `{"error":"method not allowed"}`.
+      - Завершающий слэш (`/health/`, `/hello/`) считать неизвестным путём (404), чтобы контракт был однозначным.
+      - Корневой путь `/` → 404 (отдельная главная страница не нужна).
+
+      ### FR-5. Точка входа
+      - Должна существовать команда локального запуска без дополнительных флагов по умолчанию (например `python -m app` или эквивалент, конкретный модуль выбирает архитектор).
+      - По умолчанию bind: host `127.0.0.1`, port `8000`.
+      - Переопределение через переменные окружения `HOST` и `PORT` (PORT — целое число). Некорректный PORT → ненулевой exit code и сообщение в stderr.
+      - Процесс работает, пока не получит SIGINT/SIGTERM (Ctrl+C); при остановке — корректный выход.
+      - При старте в stdout/stderr одна строка с фактическим адресом прослушивания, например `Serving on http://127.0.0.1:8000`.
+
+      ### FR-6. Юнит-тесты
+      - Фреймворк: `unittest` из стандартной библиотеки.
+      - Запуск: `python -m unittest discover -s tests -v` (или эквивалент, зафиксированный в README) без сетевых внешних сервисов и без pip.
+      - Покрыть как минимум:
+        - GET /health → 200 и JSON `status=ok`;
+        - GET /hello без name → Hello, World!;
+        - GET /hello?name=Alice → Hello, Alice!;
+        - GET /hello с пустым/пробельным name → World;
+        - неизвестный путь → 404;
+        - не-GET на /health и /hello → 405.
+      - Тесты должны быть детерминированными и не зависеть от занятого порта 8000: предпочтительно тестировать handler/логику напрямую (или через ephemeral port), не требуя ручного запуска сервера.
+      - Все тесты проходят на чистом Python без установки пакетов.
+
+      ### FR-7. README
+      - Заменить текущий заглушечный README.md на документ сервиса.
+      - Обязательные разделы:
+        - краткое описание;
+        - требования: Python 3.11+, только stdlib;
+        - запуск сервера;
+        - проверка curl-ами GET /health и GET /hello (с name и без);
+        - запуск тестов.
+      - Не описывать оркестратор и skills — README про продукт.
+
+      ### FR-8. Границы продукта (не делать)
+      - Нет аутентификации, HTTPS, CORS, persistence, HTML UI, Docker, CI-конфигов, линтеров, type-checkers как обязательной части.
+      - Не добавлять сторонние фреймворки (Flask/FastAPI/httpx и т.п.).
+      - Не менять `.cursor/skills/`, `orchestrator-protocol.md`, `memory/` как часть продукта.
+
+      ## Нефункциональные требования
+
+      ### NFR-1. Стек
+      - Язык: Python 3.11+ (CPython). Предполагаемая среда Cloud Agent уже содержит интерпретатор; pin конкретной микроверсии не требуется.
+      - HTTP: stdlib (`http.server` и/или `wsgiref.simple_server` — выбор архитектора).
+      - Кодировка: UTF-8 для тел ответов и разбора query.
+
+      ### NFR-2. Производительность и нагрузка
+      - Не задано. Достаточно однопоточного/однопроцессного сервера для локальной разработки и ручных проверок. Высокая нагрузка, keep-alive tuning и пулы не требуются.
+
+      ### NFR-3. Безопасность
+      - Аутентификация/авторизация не требуются (локальный dev-сервис).
+      - Имя из query не исполняется как код; только подставляется в JSON-строку с корректным экранированием.
+      - Ограничение длины `name`: если после decode длина > 256 символов — HTTP 400, тело `{"error":"name too long"}`.
+      - Не логировать полный query на INFO по умолчанию (достаточно method+path).
+
+      ### NFR-4. Наблюдаемость
+      - Минимальные логи запросов в stderr: method, path, status code.
+      - Health не требует метрик/tracing.
+
+      ### NFR-5. Совместимость с Cloud Agents
+      - Репозиторий после реализации должен позволять: клонировать/открыть workspace, запустить тесты одной командой, поднять сервер и проверить curl без `pip install`.
+      - Структура каталогов должна быть очевидной (модуль приложения + `tests/`).
+      - Не полагаться на Makefile/poetry/tox. Опциональный простой скрипт не обязателен.
+
+      ### NFR-6. Качество кода
+      - Читаемый код, без мёртвых абстракций.
+      - Контракт JSON стабильный (ключи `status`, `message`, `error` как выше), без лишних полей.
+
+      ## Открытые вопросы
+      - Критических блокирующих вопросов нет. Ниже — принятые по умолчанию решения (не требуют ответа пользователя):
+        - JSON, а не text/plain, для единообразия и простой машинной проверки.
+        - Host 127.0.0.1:8000, override через HOST/PORT.
+        - Python 3.11+.
+        - Trailing slash = 404.
+        - Лимит имени 256 символов.
+        - HEAD не поддерживается отдельно (405), чтобы не усложнять минимальный сервис.
+
+      ## Контекст для архитектора
+      - Репозиторий сейчас пустой с точки зрения продукта: есть только заглушка README.md, git, skills оркестратора и memory/. Реализация должна добавить прикладной код, тесты и заменить README.
+      - Не трогать оркестраторные файлы (`.cursor/`, `memory/`, `orchestrator-protocol.md`).
+      - Предпочтительная раскладка (рекомендация, не жёсткое требование): пакет приложения в корне или `src/` + `tests/test_*.py` + точка входа `__main__.py`.
+      - Handler лучше вынести из `do_GET` так, чтобы unittest вызывал чистую функцию `(method, path, query) -> (status, headers, body)` без сокета.
+      - Архитектура должна быть реализуема одним разработчиком за один проход: 1–2 модуля приложения, 1 файл тестов, README.
+      - Критерий готовности продукта: `python -m unittest discover -s tests -v` зелёный; вручную `GET /health` и `GET /hello?name=Ada` соответствуют контракту выше.
+    status: done
+
+  - id: 2
+    parent_execution_id: 1
+    agent_type: architect
+    started_at: "2026-08-25T08:27:06Z"
+    finished_at: "2026-08-25T08:27:51Z"
+    output_data: |
+      ## Обзор решения
+
+      Минимальный HTTP/1.1 сервис на CPython 3.11+ только со стандартной библиотекой. Вся бизнес-логика живёт в чистой функции `handle_request(method, path, query) -> Response` без сокетов и без глобального состояния. `http.server.HTTPServer` + `BaseHTTPRequestHandler` — тонкая оболочка: разбор строки запроса, вызов handler, запись статус/заголовков/тела.
+
+      Ключевые решения:
+      - Пакет `app/` в корне репозитория, запуск `python -m app` (bind `127.0.0.1:8000` по умолчанию).
+      - Юнит-тесты вызывают только `handle_request`, порт 8000 не занимают и сервер не поднимают.
+      - JSON компактный (`separators=(",", ":")`, `ensure_ascii=False`), тела UTF-8, без лишних полей.
+      - Однопоточный `HTTPServer`, ответы с `Connection: close`, чтобы не возиться с keep-alive.
+      - Не трогать `.cursor/`, `memory/`, `orchestrator-protocol.md`. Заменить корневой README.md на документ продукта.
+
+      ## Компоненты системы
+
+      1. **`app.handler`** — маршрутизация и формирование ответов. Единственное место с правилами FR-2…FR-4 и лимитом имени (NFR-3). Не импортирует `http.server`.
+      2. **`app.__main__`** — чтение `HOST`/`PORT`, создание `HTTPServer`, логирование, сигналы, строка `Serving on …`. Адаптер: `BaseHTTPRequestHandler` делегирует в `handle_request`.
+      3. **`tests/test_handler.py`** — `unittest` против `handle_request`.
+      4. **`README.md`** — описание продукта, запуск, curl, тесты.
+
+      Зависимости: `__main__` → `handler`; `tests` → `handler`. Циклических зависимостей нет.
+
+      ## Структуры данных
+
+      ```python
+      from dataclasses import dataclass
+
+      @dataclass(frozen=True)
+      class Response:
+          status: int
+          headers: dict[str, str]   # имя заголовка -> значение; порядок не важен
+          body: bytes               # UTF-8 JSON, без завершающего \\n
+      ```
+
+      JSON-тела (и только эти ключи):
+      - успех `/health`: `{"status":"ok"}`
+      - успех `/hello`: `{"message":"Hello, <name>!"}`
+      - ошибки: `{"error":"<code>"}`, где `<code>` один из `not found` | `method not allowed` | `name too long`
+
+      Сериализация: `json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")`.
+
+      Конфиг процесса (не dataclass, достаточно локальных переменных в `main`):
+      - `host: str` — `os.environ.get("HOST", "127.0.0.1")`
+      - `port: int` — `os.environ.get("PORT", "8000")` через `int(...)`; допустимый диапазон 1…65535. Иначе stderr и `sys.exit(1)`.
+
+      Query `name`: после `urllib.parse.parse_qs(query, keep_blank_values=True)` взять первое значение списка `name` (уже URL-decoded, UTF-8). `str.strip()`. Пустое / только пробелы / ключ отсутствует → `"World"`. Длина в символах Python `len(name) > 256` → 400.
+
+      ## API и интерфейсы
+
+      ### Чистая функция (контракт для тестов и сервера)
+
+      ```python
+      def handle_request(method: str, path: str, query: str) -> Response:
+          """
+          method: HTTP-метод как в запросе, сравнение без учёта регистра (нормализовать .upper()).
+          path: путь без query, как urlparse(...).path (например "/hello").
+          query: raw query string без ведущего "?", может быть "".
+          """
+      ```
+
+      Маршруты (путь сравнивать точно, без нормализации слэшей):
+
+      | Условие | status | заголовки | тело |
+      | --- | --- | --- | --- |
+      | path `/health`, method GET | 200 | Content-Type, Content-Length | `{"status":"ok"}` |
+      | path `/hello`, method GET, name ок | 200 | Content-Type, Content-Length | `{"message":"Hello, <name>!"}` |
+      | path `/hello`, method GET, name > 256 символов | 400 | Content-Type, Content-Length | `{"error":"name too long"}` |
+      | path `/health` или `/hello`, method не GET | 405 | Content-Type, Content-Length, Allow: GET | `{"error":"method not allowed"}` |
+      | любой другой path (включая `/`, `/health/`, `/hello/`) | 404 | Content-Type, Content-Length | `{"error":"not found"}` |
+
+      Обязательные заголовки каждого ответа:
+      - `Content-Type: application/json; charset=utf-8`
+      - `Content-Length: <len(body)>` (байты)
+      - `Connection: close`
+      - при 405 дополнительно `Allow: GET`
+
+      Query на `/health` игнорируется. На `/hello` учитывается только первый `name`.
+
+      Примеры (должны совпасть с тестами):
+      - GET `/hello` query `` → `{"message":"Hello, World!"}`
+      - GET `/hello` query `name=` → World
+      - GET `/hello` query `name=Alice` → `{"message":"Hello, Alice!"}`
+      - GET `/hello` query `name=%D0%9C%D0%B8%D1%80` → `{"message":"Hello, Мир!"}`
+      - GET `/hello` query `name=%20` → World
+      - GET `/hello` query `name=Alice&name=Bob` → Alice
+
+      ### HTTP-сервер
+
+      Класс-адаптер (имя на усмотрение, рекомендация `AppHandler(BaseHTTPRequestHandler)`):
+      - `protocol_version = "HTTP/1.1"`
+      - Для методов GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS (и при желании TRACE) один `_dispatch`, назначенный на `do_*`. Не оставлять дефолтный 501.
+      - В `_dispatch`: `parsed = urllib.parse.urlparse(self.path)`; `resp = handle_request(self.command, parsed.path, parsed.query)`; записать status, headers, body через `send_response` / `send_header` / `end_headers` / `wfile.write`.
+      - `log_request` / `log_message`: в stderr одна строка `METHOD PATH STATUS` (PATH без query). Не логировать query.
+      - `server_version` / `sys_version` можно оставить дефолт или укоротить; на контракт JSON не влияет.
+
+      Точка входа `python -m app`:
+      1. Прочитать HOST/PORT; при невалидном PORT — сообщение в stderr (рекомендация: `Invalid PORT: ...`) и ненулевой код.
+      2. `HTTPServer((host, port), AppHandler)` (не `ThreadingHTTPServer`).
+      3. Одна строка в stdout: `Serving on http://{host}:{port}` (flush).
+      4. `serve_forever()` до SIGINT/SIGTERM; затем `server_close()` и выход 0. SIGINT: KeyboardInterrupt. SIGTERM: `signal.signal(signal.SIGTERM, handler)` → `sys.exit(0)` или `server.shutdown()` из отдельного потока; достаточно `sys.exit(0)` после `server_close` в `finally`.
+
+      Bind по умолчанию: host `127.0.0.1`, port `8000`.
+
+      ## Технологический стек
+
+      - Python 3.11+ (CPython). Аннотации `list`/`dict` без `from __future__`.
+      - Только stdlib: `http.server`, `urllib.parse`, `json`, `os`, `sys`, `signal`, `dataclasses`, `unittest`.
+      - Запрещено: pip, requirements.txt, venv как шаг, Flask/FastAPI/httpx, Docker, CI, линтеры как обязательная часть.
+      - Почему `http.server`, а не `wsgiref`: прямой HTTP-адаптер, меньше слоёв; тесты всё равно не ходят в WSGI/сокет.
+
+      ## Файловая структура
+
+      ```
+      README.md                 # заменить заглушку; только продукт
+      app/
+        __init__.py             # реэкспорт: handle_request, Response
+        handler.py              # Response + handle_request + json helper
+        __main__.py             # AppHandler, main(), env, сигналы
+      tests/
+        __init__.py             # пустой (допустим, не обязателен)
+        test_handler.py         # unittest.TestCase
+      ```
+
+      Не создавать: `src/`, `requirements.txt`, `Makefile`, `pyproject.toml` (не нужны), не менять оркестраторные пути.
+
+      ### Содержание модулей (для разработчика)
+
+      **`app/handler.py`**
+      - `JSON_CONTENT_TYPE = "application/json; charset=utf-8"`
+      - `_json_response(status: int, payload: dict, extra_headers: dict | None = None) -> Response`
+      - `handle_request` как выше. Внутренние хелперы `_hello_name(query: str) -> str | Response`: вернуть имя или сразу 400 Response.
+
+      **`app/__main__.py`**
+      - `def parse_bind() -> tuple[str, int]`
+      - `class AppHandler(BaseHTTPRequestHandler)`
+      - `def main() -> None` и `if __name__ == "__main__": main()` — при `python -m app` выполнится `main()`.
+
+      **`tests/test_handler.py`** — минимум (все через `handle_request`, без `HTTPServer`):
+      - GET `/health` → 200, JSON `status == "ok"`, Content-Type как в контракте
+      - GET `/hello` без name → Hello, World!
+      - GET `/hello` query `name=Alice` → Hello, Alice!
+      - GET `/hello` пустой/пробельный name (`name=`, `name=%20`, `name=+++` если decode+strip даёт пусто) → World
+      - неизвестный путь `/` и `/nope` → 404, `error == "not found"`
+      - trailing slash `/health/`, `/hello/` → 404
+      - POST (и хотя бы ещё один не-GET) на `/health` и `/hello` → 405, заголовок `Allow` содержит `GET`
+      - Unicode: `name=%D0%9C%D0%B8%D1%80` → Hello, Мир!
+      - name длиной 257 → 400 `name too long`; 256 → 200
+
+      Проверка JSON в тестах: `json.loads(resp.body.decode("utf-8"))`. Дополнительно можно сравнить точные байты компактного JSON для `/health`.
+
+      Запуск тестов (зафиксировать в README): `python -m unittest discover -s tests -v`
+
+      **`README.md`** — разделы:
+      1. Краткое описание (локальный Hello HTTP на stdlib).
+      2. Требования: Python 3.11+, только стандартная библиотека, pip не нужен.
+      3. Запуск: `python -m app`; HOST/PORT.
+      4. Проверка: `curl -s http://127.0.0.1:8000/health` и `curl` для `/hello`, `/hello?name=Ada`.
+      5. Тесты: команда discover выше.
+      Не описывать оркестратор и skills.
+
+      ## Открытые решения
+
+      Разработчик может выбрать самостоятельно (рекомендации даны):
+      - Имена класса handler и хелперов — не часть внешнего контракта.
+      - Формат строки лога: рекомендация `{method} {path} {status}` в stderr; path без `?query`.
+      - Текст stderr при плохом PORT: любой понятный, код выхода ≠ 0.
+      - Пустой `tests/__init__.py` — по желанию; `discover -s tests` работает и без него, если файлы `test_*.py`.
+      - Не писать интеграционный тест с ephemeral port в этом проходе (не требуется). Если добавят — только как дополнение, не вместо вызовов `handle_request`.
+
+      Не оставлять на усмотрение: маршруты, коды, JSON-ключи, bind по умолчанию, точка входа `python -m app`, запрет pip.
+
+      ## Критерий готовности реализации
+
+      - `python -m unittest discover -s tests -v` зелёный на чистом Python 3.11+ без pip.
+      - `python -m app` печатает `Serving on http://127.0.0.1:8000` и отвечает по контракту на GET `/health` и GET `/hello?name=Ada`.
+      - Тесты не биндят порт 8000.
+    status: done
+
+  - id: 3
+    parent_execution_id: 2
+    agent_type: development
+    started_at: "2026-08-25T08:29:30Z"
+    finished_at: "2026-08-25T08:30:15Z"
+    output_data: |
+      ## Реализованные файлы
+      - app/__init__.py — реэкспорт handle_request и Response
+      - app/handler.py — dataclass Response, _json_response, _hello_name, handle_request
+      - app/__main__.py — parse_bind, AppHandler (http.server), main(), HOST/PORT, SIGINT/SIGTERM
+      - tests/__init__.py — пустой пакет тестов
+      - tests/test_handler.py — unittest против handle_request (без HTTPServer и без порта 8000)
+      - README.md — документ продукта: описание, требования, запуск, curl, тесты
+
+      ## Ключевые решения при реализации
+      - Отклонений от архитектуры нет.
+      - do_* для GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS/TRACE назначаются на AppHandler._dispatch через setattr, чтобы не оставлять дефолтный 501.
+      - JSON компактный: json.dumps(..., ensure_ascii=False, separators=(",", ":")).
+      - Тесты вызывают только handle_request; сервер в тестах не поднимается.
+
+      ## Что не реализовано
+      - Ничего из архитектурного документа не отложено.
+
+      ## Тесты
+      - Команда: python3 -m unittest discover -s tests -v (интерпретатор python в PATH отсутствует, python3 3.12.3)
+      - Результат: Ran 17 tests, OK
+    status: done
+
+  - id: 4
+    parent_execution_id: 3
+    agent_type: code-review
+    started_at: "2026-08-25T08:31:15Z"
+    finished_at: "2026-08-25T08:32:40Z"
+    output_data: |
+      ## Решение: Approve
+
+      Реализация соответствует архитектурному документу (execution 2): чистая функция `handle_request`, контракт JSON/статусов/заголовков, bind HOST/PORT, адаптер `http.server`, тесты без сокета. Критических и серьёзных проблем нет.
+
+      ## Проверенные файлы
+      - app/__init__.py — ok (реэкспорт Response, handle_request)
+      - app/handler.py — ok (маршруты FR-2…FR-4, лимит имени 256, компактный UTF-8 JSON, заголовки Content-Type / Content-Length / Connection: close, Allow: GET при 405)
+      - app/__main__.py — ok (HTTPServer, do_* → _dispatch, parse_bind, Serving on …, SIGINT/SIGTERM, лог METHOD PATH STATUS без query)
+      - tests/__init__.py — ok
+      - tests/test_handler.py — ok (минимум архитектора покрыт через handle_request, порт 8000 не занимается)
+      - README.md — ok (описание, Python 3.11+/stdlib, запуск, curl, тесты; оркестратор не описан)
+
+      ## Замечания (некритичные, для сведения разработчика)
+      - README и архитектура фиксируют `python -m app` / `python -m unittest …`. В этой VM в PATH есть `python3`, но нет `python` — это среда, не ошибка контракта.
+      - Пример `name=Alice&name=Bob` (первое значение) реализован через parse_qs, отдельным тестом не покрыт.
+      - Тесты не проверяют байтовый Content-Length и заголовок Connection: close; в handler они выставляются.
+
+      ## Следующий этап: testing
+    status: done
+
+  - id: 5
+    parent_execution_id: 4
+    agent_type: testing
+    started_at: "2026-08-25T08:32:50Z"
+    finished_at: "2026-08-25T08:33:29Z"
+    output_data: |
+      ## Результат: Тесты прошли
+
+      Существующий suite `tests/test_handler.py` зелёный. Минимум FR-6 и список архитектора покрыты через `handle_request` без сокета и без порта 8000. Багов в реализации по этим проверкам не найдено.
+
+      ## Результат запуска
+
+      Команда: `python3 -m unittest discover -s tests -v`
+
+      ```
+      test_delete_hello_method_not_allowed ... ok
+      test_health_ok ... ok
+      test_hello_default_world ... ok
+      test_hello_empty_name ... ok
+      test_hello_name_alice ... ok
+      test_hello_name_max_length ... ok
+      test_hello_name_too_long ... ok
+      test_hello_unicode_name ... ok
+      test_hello_whitespace_name_percent20 ... ok
+      test_hello_whitespace_name_plus ... ok
+      test_post_health_method_not_allowed ... ok
+      test_post_hello_method_not_allowed ... ok
+      test_put_health_method_not_allowed ... ok
+      test_trailing_slash_health ... ok
+      test_trailing_slash_hello ... ok
+      test_unknown_path ... ok
+      test_unknown_root ... ok
+      ----------------------------------------------------------------------
+      Ran 17 tests in 0.001s
+      OK
+      ```
+
+      Все тесты прошли: 17 passed, 0 failed.
+
+      ## Покрытие требований
+
+      Существующие тесты (`tests/test_handler.py`, класс `HandleRequestTests`):
+
+      - [FR-1] HTTP-сервис на stdlib — косвенно: чистый handler без pip; интеграционный подъём `HTTPServer` в suite не требуется (архитектор: тесты без сокета).
+      - [FR-2] GET /health — покрыто (`test_health_ok`: 200, Content-Type, тело `{"status":"ok"}` и компактные байты). Не-GET: `test_post_health_method_not_allowed`, `test_put_health_method_not_allowed`.
+      - [FR-3] GET /hello — покрыто: без name (`test_hello_default_world`); Alice (`test_hello_name_alice`); пустой/пробельный name (`test_hello_empty_name`, `test_hello_whitespace_name_percent20`, `test_hello_whitespace_name_plus`); Unicode URL-decode (`test_hello_unicode_name`). Не-GET: `test_post_hello_method_not_allowed`, `test_delete_hello_method_not_allowed`.
+      - [FR-4] 404/405 — покрыто: `/` и `/nope` (`test_unknown_root`, `test_unknown_path`); trailing slash (`test_trailing_slash_health`, `test_trailing_slash_hello`); 405 + Allow содержит GET (POST/PUT health, POST/DELETE hello).
+      - [FR-5] Точка входа HOST/PORT/сигналы — процессный контракт, не unit-suite; по архитектуре не обязателен в этом проходе.
+      - [FR-6] Набор unittest — выполнен: все пункты минимума зелёные, детерминированно, без порта 8000.
+      - [FR-7] README — не юнит-тест; ревью Approve.
+      - [NFR-3] Лимит имени 256 — покрыто (`test_hello_name_max_length` 200, `test_hello_name_too_long` 400).
+
+      Пробелы (не блокируют docs; опционально для development позже):
+      - повторный `name=Alice&name=Bob` (первое значение);
+      - query на `/health` игнорируется;
+      - JSON-экранирование спецсимволов в имени;
+      - заголовки `Content-Length` и `Connection: close`;
+      - метод в нижнем регистре (`get`).
+
+      ## Предложенные тесты (текст для development; на диск не записывались)
+
+      Файл: `tests/test_handler.py` — дополнительные методы в `HandleRequestTests`. Существующий suite уже достаточен для FR-6; это усиление покрытия, не дефект.
+
+      ```python
+      def test_health_ignores_query(self):
+          resp = handle_request("GET", "/health", "foo=bar&name=x")
+          self.assertEqual(resp.status, 200)
+          self.assertEqual(_payload(resp), {"status": "ok"})
+
+      def test_hello_first_name_wins(self):
+          resp = handle_request("GET", "/hello", "name=Alice&name=Bob")
+          self.assertEqual(resp.status, 200)
+          self.assertEqual(_payload(resp), {"message": "Hello, Alice!"})
+
+      def test_hello_json_escapes_quotes(self):
+          resp = handle_request("GET", "/hello", 'name=A%22B')
+          self.assertEqual(resp.status, 200)
+          self.assertEqual(_payload(resp), {"message": 'Hello, A"B!'})
+          self.assertEqual(resp.body, b'{"message":"Hello, A\\"B!"}')
+
+      def test_response_headers_content_length_and_connection(self):
+          resp = handle_request("GET", "/health", "")
+          self.assertEqual(resp.headers["Content-Length"], str(len(resp.body)))
+          self.assertEqual(resp.headers["Connection"], "close")
+
+      def test_method_case_insensitive_get(self):
+          resp = handle_request("get", "/health", "")
+          self.assertEqual(resp.status, 200)
+          self.assertEqual(_payload(resp), {"status": "ok"})
+      ```
+
+      ## Следующий этап: tech-writer
+    status: done
+
+  - id: 6
+    parent_execution_id: 5
+    agent_type: tech-writer
+    started_at: "2026-08-25T08:34:30Z"
+    finished_at: "2026-08-25T08:35:38Z"
+    output_data: |
+      ## Результат: Done
+
+      ## Созданные документы
+      - docs/8b95e2-hello-http-service/architecture.md — архитектура системы
+      - docs/8b95e2-hello-http-service/changelog.md — история изменений
+      - docs/8b95e2-hello-http-service/issues.md — реестр проблем
+
+      ## Источники
+      - Проанализировано executions: 6
+      - Git коммитов охвачено: 3 (по файлам реализации: 2)
+      - Зафиксировано проблем: 0
+    status: done
+
