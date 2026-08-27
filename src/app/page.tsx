@@ -91,8 +91,8 @@ export default function HomePage() {
               <Wallet className="size-4 text-primary" />
               <CardTitle>YPP — не зарплата</CardTitle>
               <CardDescription>
-                В базовом сценарии к месяцу 6 реклама YouTube ≈ $420, партнёрки + продукт ≈ $1 070.
-                Чистыми в базе ~$1 430 при расходах ~$160.
+                В базовом сценарии к месяцу 6 реклама YouTube ≈ $420, партнёрки + продукт ≈ $1 070,
+                X и Telegram ≈ $300. Чистыми ~$1 670 при расходах около $120.
               </CardDescription>
             </CardHeader>
           </Card>
