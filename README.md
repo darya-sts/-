@@ -36,19 +36,14 @@ npm run build
 npm start
 ```
 
-`npm start` поднимает standalone-сервер Next.js на `0.0.0.0` и порте из `PORT` (по умолчанию 3000 — так Timeweb App Platform и ждёт). Локально как раньше:
+`npm start` раздаёт статический каталог `out/` на `0.0.0.0` и порте из `PORT` (по умолчанию 43147).
 
-```bash
-PORT=43147 npm start
-```
-
-Для Timeweb Cloud App Platform в корне есть `Dockerfile` (контейнер слушает `0.0.0.0:8080`, healthcheck `GET /health`). Тип приложения: **Dockerfile** или **Next.js с SSR**, не статический frontend.
+Timeweb App Platform для этого репозитория — **frontend Next.js**: сборка `npm run build`, индексная директория `/out`. Без `output: "export"` каталог `out/` не появляется, и площадка отдаёт 404.
 
 ## Деплой в Timeweb Cloud
 
-1. Репозиторий: GitHub `darya-sts/-`, ветка с этим кодом.
-2. Тип: Dockerfile (предпочтительно) или Next.js + SSR, команда запуска `npm start`.
-3. После деплоя открывайте технический домен `*.twc1.net` / `*.timeweb.cloud` по HTTPS, не `http://127.0.0.1:43147`.
+Приложение **Media Factory**: https://darya-sts--d6dc.twc1.net  
+Репозиторий GitHub `darya-sts/-`, ветка `cursor/media-factory-3d2b`, автодеплой. Открывайте технический домен по HTTPS, не `http://127.0.0.1:43147`.
 
 ## Что внутри
 
