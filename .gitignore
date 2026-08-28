@@ -42,3 +42,5 @@ next-env.d.ts
 
 # research scratch
 /agent-tools/
+*.zip
+media-factory.zip

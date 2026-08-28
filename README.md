@@ -27,14 +27,28 @@ npm install
 npm run dev
 ```
 
-По умолчанию dev-сервер слушает `http://127.0.0.1:43147`.
+Локальный dev-сервер слушает `http://127.0.0.1:43147`. Этот адрес работает только на машине, где запущен процесс — не на Timeweb.
 
-Сборка:
+Сборка и прод:
 
 ```bash
 npm run build
 npm start
 ```
+
+`npm start` слушает `0.0.0.0` и порт из `PORT` (по умолчанию 3000 — так Timeweb App Platform / `next start` и ждут). Локально как раньше:
+
+```bash
+PORT=43147 npm start
+```
+
+Для Timeweb Cloud App Platform в корне есть `Dockerfile` (контейнер слушает `0.0.0.0:8080`, healthcheck `GET /health`). Тип приложения: **Dockerfile** или **Next.js с SSR**, не статический frontend.
+
+## Деплой в Timeweb Cloud
+
+1. Репозиторий: GitHub `darya-sts/-`, ветка с этим кодом.
+2. Тип: Dockerfile (предпочтительно) или Next.js + SSR, команда запуска `npm start`.
+3. После деплоя открывайте технический домен `*.twc1.net` / `*.timeweb.cloud` по HTTPS, не `http://127.0.0.1:43147`.
 
 ## Что внутри
 
