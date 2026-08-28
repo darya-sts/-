@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 43147 --hostname 0.0.0.0",
-    "build": "next build",
-    "start": "next start --hostname 0.0.0.0",
+    "build": "next build && node scripts/stage-standalone.mjs",
+    "start": "node scripts/start.mjs",
     "lint": "eslint"
   },
   "dependencies": {

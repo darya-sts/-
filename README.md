@@ -36,7 +36,7 @@ npm run build
 npm start
 ```
 
-`npm start` слушает `0.0.0.0` и порт из `PORT` (по умолчанию 3000 — так Timeweb App Platform / `next start` и ждут). Локально как раньше:
+`npm start` поднимает standalone-сервер Next.js на `0.0.0.0` и порте из `PORT` (по умолчанию 3000 — так Timeweb App Platform и ждёт). Локально как раньше:
 
 ```bash
 PORT=43147 npm start
