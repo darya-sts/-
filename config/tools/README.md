@@ -6,7 +6,14 @@ Native and MCP tools go here.
 - If a required `{ENV:VAR}` is missing, the file is skipped.
 
 The default DeepSeek chat agent does **not** receive these tools. They are
-used only when a user calls `/mcp`, `/agent`, or prefixes a message with `mcp:`.
+used only when a user calls `/mcp`, `/agent`, prefixes a message with `mcp:`,
+or sends an article-to-post request (URL + «обработай статью» / «напиши пост»).
+
+## DeepSeek process_article
+
+`config/tools/mcp/deepseek.json` launches `mcp_servers/deepseek_server.py`.
+The tool fetches a URL and asks DeepSeek to write a Telegram post.
+Requires `DEEPSEEK_API_KEY` (already used for normal chat).
 
 ## Timeweb Cloud
 

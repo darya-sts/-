@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shlex
 from typing import Any
 
@@ -18,6 +19,8 @@ MCP_HELP = (
     "• /agent ваш запрос\n"
     "• mcp: ваш запрос\n\n"
     "Список инструментов: /mcp-tools или /mcptools\n\n"
+    "Статья → пост: обработай статью https://example.com и напиши пост\n"
+    "или /mcp process_article с URL.\n\n"
     "Timeweb Cloud: задайте TIMEWEB_TOKEN "
     "(панель → API и Terraform). "
     "Дополнительно: MCP_SERVER_URL / MCP_SERVER_COMMAND / MCP_API_KEY."
@@ -31,6 +34,22 @@ MCP_NO_TOOLS = (
 )
 
 TIMEWEB_MCP_URL = "https://api.timeweb.cloud/api/v1/mcp/search"
+_URL_RE = re.compile(r"https?://", re.I)
+_ARTICLE_HINTS = (
+    "обработ",
+    "напиши пост",
+    "сгенерируй пост",
+    "process_article",
+    "process article",
+)
+
+
+def is_article_mcp_request(text: str) -> bool:
+    """True for 'process this article URL into a post' messages."""
+    if not _URL_RE.search(text):
+        return False
+    lowered = text.lower()
+    return any(hint in lowered for hint in _ARTICLE_HINTS)
 
 
 class McpRequest:
@@ -55,6 +74,8 @@ def parse_mcp_message(text: str | None) -> McpRequest | None:
     if cmd in {"/mcp", "/agent"}:
         query = rest.strip()
         return McpRequest(KIND_QUERY, query) if query else McpRequest(KIND_HELP)
+    if is_article_mcp_request(raw):
+        return McpRequest(KIND_QUERY, raw)
     return None
 
 

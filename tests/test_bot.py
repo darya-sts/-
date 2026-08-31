@@ -259,6 +259,73 @@ def test_timeweb_mcp_is_installed() -> None:
     assert stdio_example.name.startswith("_")
 
 
+def _load_deepseek_article():
+    spec = importlib.util.spec_from_file_location(
+        "deepseek_article", ROOT / "mcp_servers" / "deepseek_article.py"
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_deepseek_mcp_server_is_wired() -> None:
+    config = json.loads(
+        (ROOT / "config" / "tools" / "mcp" / "deepseek.json").read_text(encoding="utf-8")
+    )
+    assert config["command"] == "python"
+    assert config["args"] == ["mcp_servers/deepseek_server.py"]
+    assert "{ENV:DEEPSEEK_API_KEY}" in config["env"]["DEEPSEEK_API_KEY"]
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "COPY mcp_servers /app/mcp_servers" in dockerfile
+    assert (ROOT / "mcp_servers" / "deepseek_server.py").is_file()
+
+
+def test_article_message_routes_to_mcp() -> None:
+    routing = _load_mcp_routing()
+    sample = "обработай статью https://example.com/some-article и напиши пост"
+    req = routing.parse_mcp_message(sample)
+    assert req is not None and req.kind == "query"
+    assert "example.com" in req.query
+    assert routing.parse_mcp_message("смотри https://example.com") is None
+    assert routing.parse_mcp_message("напиши пост без ссылки") is None
+
+
+def test_extract_article_and_process_without_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    article = _load_deepseek_article()
+    html = (
+        b"<html><head><script>secret()</script><title>Hi</title></head>"
+        b"<body><p>Hello world</p></body></html>"
+    )
+
+    class _Headers:
+        def get_content_charset(self) -> str:
+            return "utf-8"
+
+    class _Resp:
+        headers = _Headers()
+
+        def read(self, _n: int = -1) -> bytes:
+            return html
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(article, "_trafilatura_extract", lambda _url: None)
+    monkeypatch.setattr(article, "urlopen", lambda *a, **k: _Resp())
+    text = article.extract_article_text("https://example.com/post")
+    assert "Hello world" in text
+    assert "secret" not in text
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    assert article.generate_post("text") == "DEEPSEEK_API_KEY не задан."
+    assert article.process_article("not-a-url").startswith("Нужен ")
+
+
 def test_health_port_defaults_to_8080(monkeypatch: pytest.MonkeyPatch) -> None:
     health = _load_health()
     monkeypatch.delenv("PORT", raising=False)

@@ -51,7 +51,14 @@
 /agent что умеют твои инструменты?
 mcp: краткий отчёт по последним новостям
 /mcp-tools
+обработай статью https://example.com и напиши пост
 ```
+
+### DeepSeek MCP: статья → пост
+
+По шагам из инструкции DeepSeek в проект добавлен stdio MCP-сервер `mcp_servers/deepseek_server.py` с инструментом `process_article`. Клиент подключает его через `config/tools/mcp/deepseek.json` (нужен `DEEPSEEK_API_KEY`).
+
+Сообщение вида «обработай статью URL и напиши пост» уходит в MCP и не в обычный чат.
 
 ### Timeweb Cloud MCP
 

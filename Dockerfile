@@ -27,6 +27,7 @@ RUN apt-get update \
 COPY pyproject.toml uv.lock README.md LICENSE.telegram-agent-mcp-client /app/
 COPY telegram_agent /app/telegram_agent
 COPY config /app/config
+COPY mcp_servers /app/mcp_servers
 
 RUN uv sync --locked --no-dev \
     && mkdir -p /app/data \

@@ -1,0 +1,10 @@
+{
+  "description": "DeepSeek MCP tool process_article: URL → Telegram post. Uses DEEPSEEK_API_KEY.",
+  "command": "python",
+  "args": ["mcp_servers/deepseek_server.py"],
+  "env": {
+    "DEEPSEEK_API_KEY": "{ENV:DEEPSEEK_API_KEY}",
+    "DEEPSEEK_API_BASE": "{ENV:DEEPSEEK_API_BASE:-https://api.deepseek.com}",
+    "DEEPSEEK_API_MODEL": "{ENV:DEEPSEEK_API_MODEL:-deepseek-chat}"
+  }
+}

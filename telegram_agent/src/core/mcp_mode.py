@@ -21,6 +21,8 @@ _MCP_SYSTEM = (
     "You are an MCP tool agent for Telegram bot @suyuyu_bot. "
     "Use the available tools when they help answer the request. "
     "Reply in the user's language. If a tool fails, explain the error briefly.\n\n"
+    "process_article fetches a URL and writes a Telegram post via DeepSeek. "
+    "Use it when the user sends an article link to process or asks for a post.\n\n"
     "Timeweb Cloud hosted MCP exposes three tools: "
     "search_tools (English keywords: action + resource), "
     "get_tool_definition (tool_id → JSON schema), "
