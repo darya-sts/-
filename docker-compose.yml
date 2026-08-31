@@ -8,4 +8,5 @@ services:
       - .env
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN in .env}
+    network_mode: bridge
     init: true
