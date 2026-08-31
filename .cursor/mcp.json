@@ -2,11 +2,7 @@
   "mcpServers": {
     "telegram": {
       "command": "npx",
-      "args": ["-y", "cursor-telegram-mcp"],
-      "env": {
-        "TELEGRAM_BOT_TOKEN": "8854769937:AAFZW1pv7QHT7oaS4mzlH3F7OYOFgJAKDp8",
-        "TELEGRAM_CHAT_ID": "5215421409"
-      }
+      "args": ["-y", "cursor-telegram-mcp"]
     }
   }
 }
