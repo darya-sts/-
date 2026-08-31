@@ -238,6 +238,25 @@ def test_env_example_documents_mcp() -> None:
     example = (ROOT / ".env.example").read_text(encoding="utf-8")
     assert "MCP_SERVER_URL=" in example
     assert "MCP_API_KEY=" in example
+    assert "TIMEWEB_TOKEN=" in example
+
+
+def test_timeweb_mcp_is_installed() -> None:
+    routing = _load_mcp_routing()
+    path = ROOT / "config" / "tools" / "mcp" / "timeweb.json"
+    config = json.loads(path.read_text(encoding="utf-8"))
+    assert config["url"] == routing.TIMEWEB_MCP_URL
+    assert config["headers"]["Authorization"] == "Bearer {ENV:TIMEWEB_TOKEN}"
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "TIMEWEB_TOKEN: ${TIMEWEB_TOKEN:-}" in compose
+    assert "TIMEWEB_TOKEN" in routing.MCP_HELP
+    assert "TIMEWEB_TOKEN" in routing.MCP_NO_TOOLS
+    # Without a token the loader must skip this file (placeholder stays unresolved).
+    raw = path.read_text(encoding="utf-8")
+    assert "{ENV:TIMEWEB_TOKEN}" in raw
+    stdio_example = ROOT / "config" / "tools" / "mcp" / "_timeweb_stdio.example.json"
+    assert stdio_example.is_file()
+    assert stdio_example.name.startswith("_")
 
 
 def test_health_port_defaults_to_8080(monkeypatch: pytest.MonkeyPatch) -> None:

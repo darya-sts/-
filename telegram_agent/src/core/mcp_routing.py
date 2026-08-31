@@ -17,16 +17,20 @@ MCP_HELP = (
     "• /mcp ваш запрос\n"
     "• /agent ваш запрос\n"
     "• mcp: ваш запрос\n\n"
-    "Список инструментов: /mcp-tools или /mcptools\n"
-    "Сервер задаётся через MCP_SERVER_URL или MCP_SERVER_COMMAND "
-    "и при необходимости MCP_API_KEY."
+    "Список инструментов: /mcp-tools или /mcptools\n\n"
+    "Timeweb Cloud: задайте TIMEWEB_TOKEN "
+    "(панель → API и Terraform). "
+    "Дополнительно: MCP_SERVER_URL / MCP_SERVER_COMMAND / MCP_API_KEY."
 )
 
 MCP_NO_TOOLS = (
     "MCP-серверы не подключены: инструменты не найдены.\n"
-    "Задайте MCP_SERVER_URL (или MCP_SERVER_COMMAND) и при необходимости "
-    "MCP_API_KEY либо положите JSON-конфиг в config/tools/."
+    "Для Timeweb Cloud задайте TIMEWEB_TOKEN "
+    "(https://timeweb.cloud/my/api-keys).\n"
+    "Либо MCP_SERVER_URL / MCP_SERVER_COMMAND и при необходимости MCP_API_KEY."
 )
+
+TIMEWEB_MCP_URL = "https://api.timeweb.cloud/api/v1/mcp/search"
 
 
 class McpRequest:

@@ -19,9 +19,10 @@
 | `DEEPSEEK_API_MODEL` | Модель, по умолчанию `deepseek-chat\|text+structured` |
 | `DEEPSEEK_API_BASE` | `https://api.deepseek.com` |
 | `LLM_ORDER` / `LLM_ORDER_FAST` | Порядок провайдеров, по умолчанию `deepseek` |
-| `MCP_SERVER_URL` | HTTP/SSE URL внешнего MCP-сервера |
+| `TIMEWEB_TOKEN` | API-токен Timeweb Cloud для официального MCP |
+| `MCP_SERVER_URL` | HTTP/SSE URL дополнительного MCP-сервера |
 | `MCP_SERVER_COMMAND` | Команда stdio MCP-сервера (если нет URL) |
-| `MCP_API_KEY` | Необязательный Bearer-ключ для MCP HTTP |
+| `MCP_API_KEY` | Необязательный Bearer-ключ для дополнительного HTTP MCP |
 | `MCP_SERVER_NAME` | Имя сервера из env, по умолчанию `env-mcp` |
 
 Файл `.env` в git не попадает.
@@ -52,7 +53,19 @@ mcp: краткий отчёт по последним новостям
 /mcp-tools
 ```
 
-Сервер задаётся переменными `MCP_SERVER_URL` или `MCP_SERVER_COMMAND`. Дополнительно можно положить JSON в `config/tools/` (см. `config/tools/README.md` и пример `config/tools/mcp/_remote.example.json`). Если сервер не задан, `/mcp` сообщит об этом, а DeepSeek-чат продолжит работать.
+### Timeweb Cloud MCP
+
+Репозиторий [timeweb-cloud/mcp-server](https://github.com/timeweb-cloud/mcp-server) **устарел**. В проект подключён актуальный официальный сервер [timeweb-cloud/mcp](https://github.com/timeweb-cloud/mcp): HTTP `https://api.timeweb.cloud/api/v1/mcp/search`.
+
+1. Выпустите токен в панели: [API и Terraform](https://timeweb.cloud/my/api-keys).
+2. Задайте `TIMEWEB_TOKEN` в `.env` или в переменных Timeweb Apps.
+3. Конфиг: `config/tools/mcp/timeweb.json` (подставляется `{ENV:TIMEWEB_TOKEN}`). Без токена файл не загружается, DeepSeek-чат не ломается.
+
+Инструменты Timeweb: `search_tools` → `get_tool_definition` → `execute_tool`. Изменяющие операции требуют повторного `/mcp` с `confirm_token`.
+
+Старый npm-пакет `npx -y timeweb-mcp-server` можно включить отдельно: скопируйте `config/tools/mcp/_timeweb_stdio.example.json` (нужен Node.js).
+
+Дополнительный произвольный сервер: `MCP_SERVER_URL` / `MCP_SERVER_COMMAND` или JSON в `config/tools/`. Если сервер не задан, `/mcp` сообщит об этом, а DeepSeek-чат продолжит работать.
 
 ## Docker Compose
 
@@ -64,7 +77,7 @@ docker compose up -d --build
 ### Timeweb Cloud Apps
 
 1. Деплой из Docker Compose, ветка с этим манифестом.
-2. В переменных приложения задайте `TELEGRAM_BOT_TOKEN`, `DEEPSEEK_API_KEY` и при необходимости `MCP_SERVER_URL` / `MCP_API_KEY`.
+2. В переменных приложения задайте `TELEGRAM_BOT_TOKEN`, `DEEPSEEK_API_KEY` и для MCP Timeweb — `TIMEWEB_TOKEN`.
 3. Разрешённые пользователи: пропишите ID в `config/allowed_users.txt` (файл попадает в образ при сборке) или в переменную `ALLOWED_USERS`.
 4. Хост-порты `80` и `443` не используйте. Health-check слушает `8080`.
 

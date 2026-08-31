@@ -26,6 +26,7 @@ services:
       MCP_SERVER_COMMAND: ${MCP_SERVER_COMMAND:-}
       MCP_SERVER_NAME: ${MCP_SERVER_NAME:-env-mcp}
       MCP_API_KEY: ${MCP_API_KEY:-}
+      TIMEWEB_TOKEN: ${TIMEWEB_TOKEN:-}
       LANGSMITH_TRACING: "false"
     init: true
     healthcheck:

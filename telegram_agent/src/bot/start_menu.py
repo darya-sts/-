@@ -8,11 +8,13 @@ START_ACTIONS: dict[str, str] = {
     "start:ask": "Напишите ваш вопрос — отвечу с помощью DeepSeek.",
     "start:skills": (
         "Я чат-бот @suyuyu_bot. Обычные сообщения отвечает DeepSeek. "
-        "Для внешних MCP-агентов: /mcp запрос или /mcp-tools."
+        "Для Timeweb Cloud и других MCP-агентов: /mcp запрос или /mcp-tools. "
+        "Нужен TIMEWEB_TOKEN."
     ),
     "start:mcp": (
-        "Режим MCP: отправьте /mcp ваш запрос или /agent ваш запрос. "
-        "Список инструментов — /mcp-tools. Обычный чат по-прежнему идёт через DeepSeek."
+        "Режим MCP (Timeweb Cloud): отправьте /mcp ваш запрос. "
+        "Список инструментов — /mcp-tools. "
+        "Токен: TIMEWEB_TOKEN в .env. Обычный чат по-прежнему идёт через DeepSeek."
     ),
 }
 
