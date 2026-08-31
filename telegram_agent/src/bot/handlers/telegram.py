@@ -25,6 +25,8 @@ from ...core.progress import (
 )
 from ...utils import extract_response
 from ..abstract import AgenticBot, handler
+from ...core.mcp_mode import format_mcp_status, run_mcp_query
+from ...core.mcp_routing import KIND_HELP, KIND_TOOLS, MCP_HELP, parse_mcp_message
 from ..start_menu import action_reply, is_start_command, start_keyboard
 from ..utils import str_size, unpack_user
 
@@ -244,6 +246,33 @@ async def telegram_chat(
             await instance.bot.send(msg, "⏹️ Cancelling...")
         else:
             await instance.bot.send(msg, "Nothing to cancel.")
+        return
+
+    # Explicit MCP path: /mcp, /agent, mcp: — regular text stays on DeepSeek.
+    mcp_request = parse_mcp_message(msg.text)
+    if mcp_request is not None:
+        if mcp_request.kind == KIND_HELP:
+            await instance.bot.send(msg, MCP_HELP)
+            return
+        if mcp_request.kind == KIND_TOOLS:
+            await instance.bot.send(msg, await format_mcp_status())
+            return
+        if chat_id in instance.cancel_events:
+            await instance.bot.send(
+                msg, "⏳ I'm still working on your previous message. Send /cancel to abort."
+            )
+            return
+        cancel_event = Event()
+        instance.cancel_events[chat_id] = cancel_event
+        waiting = await instance.bot.send(msg)
+        try:
+            answer = await run_mcp_query(mcp_request.query)
+            await instance.bot.edit(waiting, answer, replace=True, final=True)
+        except Exception as e:
+            print_exc()
+            await telegram_report_issue(instance, msg, waiting, e)
+        finally:
+            instance.cancel_events.pop(chat_id, None)
         return
 
     # Rate limiting: reject if this chat already has an active agent run

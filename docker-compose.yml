@@ -22,6 +22,10 @@ services:
       CONFIG_DIR: /app/config
       DATA_DIR: /app/data
       ALLOWED_USERS: ${ALLOWED_USERS:-}
+      MCP_SERVER_URL: ${MCP_SERVER_URL:-}
+      MCP_SERVER_COMMAND: ${MCP_SERVER_COMMAND:-}
+      MCP_SERVER_NAME: ${MCP_SERVER_NAME:-env-mcp}
+      MCP_API_KEY: ${MCP_API_KEY:-}
       LANGSMITH_TRACING: "false"
     init: true
     healthcheck:

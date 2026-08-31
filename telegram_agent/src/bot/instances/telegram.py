@@ -172,6 +172,8 @@ class TelegramBot(Bot):
         await self.core.set_my_commands(
             [
                 BotCommand("start", "Start the bot"),
+                BotCommand("mcp", "Ask an MCP agent"),
+                BotCommand("mcptools", "List MCP tools"),
                 BotCommand("tts", "Toggle TTS on/off"),
                 BotCommand("cancel", "Cancel the current response"),
             ]

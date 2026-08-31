@@ -7,14 +7,19 @@ START_PREFIX = "start:"
 START_ACTIONS: dict[str, str] = {
     "start:ask": "Напишите ваш вопрос — отвечу с помощью DeepSeek.",
     "start:skills": (
-        "Я чат-бот @suyuyu_bot. Отвечаю на вопросы через DeepSeek. "
-        "Нажмите «Задать вопрос» или просто напишите сообщение."
+        "Я чат-бот @suyuyu_bot. Обычные сообщения отвечает DeepSeek. "
+        "Для внешних MCP-агентов: /mcp запрос или /mcp-tools."
+    ),
+    "start:mcp": (
+        "Режим MCP: отправьте /mcp ваш запрос или /agent ваш запрос. "
+        "Список инструментов — /mcp-tools. Обычный чат по-прежнему идёт через DeepSeek."
     ),
 }
 
 START_BUTTONS: tuple[tuple[str, str], ...] = (
     ("Задать вопрос", "start:ask"),
     ("Что ты умеешь?", "start:skills"),
+    ("MCP-агент", "start:mcp"),
 )
 
 

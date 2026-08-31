@@ -145,9 +145,99 @@ def test_start_command_matches_bot_suffix() -> None:
 def test_start_menu_has_action_buttons() -> None:
     menu = _load_start_menu()
     titles = [title for title, _ in menu.START_BUTTONS]
-    assert titles == ["Задать вопрос", "Что ты умеешь?"]
+    assert titles == ["Задать вопрос", "Что ты умеешь?", "MCP-агент"]
     assert menu.action_reply("start:ask")
+    assert menu.action_reply("start:mcp")
     assert menu.action_reply("unknown") is None
+
+
+def _load_mcp_routing():
+    spec = importlib.util.spec_from_file_location(
+        "mcp_routing", ROOT / "telegram_agent" / "src" / "core" / "mcp_routing.py"
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_regular_message_is_not_mcp() -> None:
+    routing = _load_mcp_routing()
+    assert routing.parse_mcp_message("привет, как дела?") is None
+    assert routing.parse_mcp_message("/start") is None
+
+
+def test_parse_mcp_commands() -> None:
+    routing = _load_mcp_routing()
+    help_req = routing.parse_mcp_message("/mcp")
+    assert help_req is not None and help_req.kind == "help"
+    query = routing.parse_mcp_message("/mcp найди заголовок")
+    assert query is not None and query.kind == "query" and query.query == "найди заголовок"
+    alias = routing.parse_mcp_message("/agent@suyuyu_bot тест")
+    assert alias is not None and alias.kind == "query" and alias.query == "тест"
+    prefix = routing.parse_mcp_message("mcp: открой url")
+    assert prefix is not None and prefix.kind == "query" and prefix.query == "открой url"
+    tools = routing.parse_mcp_message("/mcp-tools")
+    assert tools is not None and tools.kind == "tools"
+    tools_alias = routing.parse_mcp_message("/mcptools@suyuyu_bot")
+    assert tools_alias is not None and tools_alias.kind == "tools"
+    empty_prefix = routing.parse_mcp_message("mcp:")
+    assert empty_prefix is not None and empty_prefix.kind == "help"
+
+
+def test_servers_from_env_url_and_command() -> None:
+    routing = _load_mcp_routing()
+    assert routing.servers_from_env({}) == {}
+    http = routing.servers_from_env(
+        {
+            "MCP_SERVER_URL": "https://mcp.example/sse",
+            "MCP_API_KEY": "secret",
+            "MCP_SERVER_NAME": "remote",
+        }
+    )
+    assert http["remote"]["transport"] == "sse"
+    assert http["remote"]["headers"]["Authorization"] == "Bearer secret"
+    stream = routing.servers_from_env(
+        {"MCP_SERVER_URL": "https://mcp.example/mcp"}
+    )
+    assert stream["env-mcp"]["transport"] == "streamable_http"
+    stdio = routing.servers_from_env(
+        {"MCP_SERVER_COMMAND": 'npx -y "demo mcp"'}
+    )
+    assert stdio["env-mcp"]["transport"] == "stdio"
+    assert stdio["env-mcp"]["command"] == "npx"
+    assert stdio["env-mcp"]["args"] == ["-y", "demo mcp"]
+    # URL wins over command so a remote server does not also spawn stdio.
+    both = routing.servers_from_env(
+        {
+            "MCP_SERVER_URL": "https://mcp.example/mcp",
+            "MCP_SERVER_COMMAND": "npx -y demo-mcp",
+        }
+    )
+    assert "url" in both["env-mcp"]
+    assert "command" not in both["env-mcp"]
+
+
+def test_mcp_stub_tool_list_and_deepseek_passthrough() -> None:
+    """Stub MCP flow: listing tools without a live server; chat stays DeepSeek."""
+    routing = _load_mcp_routing()
+    assert routing.parse_mcp_message("сколько будет 2+2?") is None
+    assert routing.format_tools_status([]) == routing.MCP_NO_TOOLS
+    listed = routing.format_tools_status(["search", "fetch"])
+    assert "search" in listed and "fetch" in listed
+    assert "2" in listed
+
+
+def test_friendly_agent_has_no_mcp_tools() -> None:
+    config = json.loads((ROOT / "config" / "agent_config.json").read_text(encoding="utf-8"))
+    assert config["agents"]["Friendly Agent"]["tools"] == []
+    assert config["common"]["tools"] == []
+
+
+def test_env_example_documents_mcp() -> None:
+    example = (ROOT / ".env.example").read_text(encoding="utf-8")
+    assert "MCP_SERVER_URL=" in example
+    assert "MCP_API_KEY=" in example
 
 
 def test_health_port_defaults_to_8080(monkeypatch: pytest.MonkeyPatch) -> None:
