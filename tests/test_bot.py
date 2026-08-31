@@ -131,7 +131,7 @@ def test_allowed_users_contains_numeric_id() -> None:
         for line in text.splitlines()
         if line.strip() and not line.strip().startswith("#")
     ]
-    assert ids == ["744808663"]
+    assert ids == ["744808663", "5215421409", "263935642"]
 
 
 def test_start_command_matches_bot_suffix() -> None:
