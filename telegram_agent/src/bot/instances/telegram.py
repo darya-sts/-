@@ -215,6 +215,15 @@ class TelegramBot(Bot):
             if isinstance(call.message, Message):
                 await self.change_page(call.message, call.data)
 
+        handle_start_callback = kwargs.get("start_callback")
+        if handle_start_callback:
+
+            @self.core.callback_query_handler(
+                func=lambda call: bool(call.data) and call.data.startswith("start:")
+            )
+            async def _handle_start_callback(call: CallbackQuery) -> None:
+                await handle_start_callback(call)
+
         if handle_document:
 
             @self.core.message_handler(
@@ -253,6 +262,7 @@ class TelegramBot(Bot):
         self,
         message_or_chat_id: Message | int | str,
         text: str | None = None,
+        reply_markup: Any = None,
     ) -> Message:
         """Send a message to a chat."""
         ref: int = (
@@ -260,13 +270,16 @@ class TelegramBot(Bot):
             if isinstance(message_or_chat_id, Message)
             else int(message_or_chat_id)
         )
+        extra = dict(msg_params)
+        if reply_markup is not None:
+            extra["reply_markup"] = reply_markup
         if text and len(text) > self._dynamic_length(text):
             return await self.paginated(self.core.send_message, ref, self.fixed(text))
         msg: Message = await self._exec(
             self.core.send_message,
             ref,
             self.fixed(text or self.waiting),
-            **msg_params,
+            **extra,
         )
         if not text:
             self.edit_cache[msg.id] = {"current": 0, "content": [self.waiting]}

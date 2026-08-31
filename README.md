@@ -2,7 +2,7 @@
 
 Чат-бот [@suyuyu_bot](https://t.me/suyuyu_bot) на базе [telegram-agent-mcp-client](https://github.com/philogicae/telegram-agent-mcp-client). Сообщения обрабатывает агент LangGraph Swarm, ответы даёт модель **DeepSeek**.
 
-`/start` и `/help` отвечают приветствием. Дальше бот ведёт обычный диалог.
+`/start` и `/help` показывают кнопки **Задать вопрос** и **Что ты умеешь?**. Дальше бот ведёт обычный диалог.
 
 Исходный агент распространяется по лицензии MIT (см. `LICENSE.telegram-agent-mcp-client`).
 

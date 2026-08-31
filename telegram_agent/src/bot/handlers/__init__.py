@@ -5,6 +5,7 @@ from .telegram import (
     telegram_file,
     telegram_image,
     telegram_report_issue,
+    telegram_start_callback,
     telegram_voice,
 )
 
@@ -13,5 +14,6 @@ __all__ = [
     "telegram_file",
     "telegram_image",
     "telegram_report_issue",
+    "telegram_start_callback",
     "telegram_voice",
 ]

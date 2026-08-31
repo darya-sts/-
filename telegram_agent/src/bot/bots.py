@@ -7,7 +7,13 @@ from typing import Any
 from dotenv import load_dotenv
 
 from .abstract import AgenticBot
-from .handlers import telegram_chat, telegram_file, telegram_image, telegram_voice
+from .handlers import (
+    telegram_chat,
+    telegram_file,
+    telegram_image,
+    telegram_start_callback,
+    telegram_voice,
+)
 from .instances import TelegramBot
 from .logging import TelegramLogger
 from .managers import DocumentManager, DownloadManager
@@ -47,6 +53,7 @@ async def run_telegram_bot(dev: bool = False) -> None:
     managers: dict[str, type] = {}
     handlers: dict[str, Any] = {
         "chat": telegram_chat,
+        "start_callback": telegram_start_callback,
     }
     if getenv("TRANSMISSION_URL"):
         managers["download_torrent"] = DownloadManager

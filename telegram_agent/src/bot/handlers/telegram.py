@@ -12,7 +12,7 @@ from typing import Any
 import aiofiles.os  # ty: explicit submodule import
 from dotenv import load_dotenv
 from langchain.messages import HumanMessage
-from telebot.types import InputFile, InputMediaPhoto, Message
+from telebot.types import CallbackQuery, InputFile, InputMediaPhoto, Message
 
 from ...core.llm import LLM, can_listen, can_see
 from ...core.progress import (
@@ -25,6 +25,7 @@ from ...core.progress import (
 )
 from ...utils import extract_response
 from ..abstract import AgenticBot, handler
+from ..start_menu import action_reply, is_start_command, start_keyboard
 from ..utils import str_size, unpack_user
 
 load_dotenv()
@@ -116,6 +117,18 @@ def _make_progress_sink(instance: AgenticBot, reply: Message) -> Any:
 
 
 @handler
+async def telegram_start_callback(instance: AgenticBot, call: CallbackQuery) -> None:
+    """Handle /start action buttons."""
+    if not call.from_user or not instance.agent.is_allowed(call.from_user.id):
+        await instance.bot.core.answer_callback_query(call.id)
+        return
+    await instance.bot.core.answer_callback_query(call.id)
+    text = action_reply(call.data)
+    if text and isinstance(call.message, Message):
+        await instance.bot.send(call.message, text)
+
+
+@handler
 async def telegram_report_issue(
     instance: AgenticBot, orig_msg: Message, reply_msg: Message, e: Exception | str
 ) -> None:
@@ -198,8 +211,12 @@ async def telegram_chat(
         and not instance.agent.is_allowed(msg.from_user.id)
     ):
         return
-    if msg.text in ["/start", "/help"]:
-        await instance.bot.send(msg, "🌟 Welcome! How can I help you?")
+    if is_start_command(msg.text):
+        await instance.bot.send(
+            msg,
+            "Выберите действие:",
+            reply_markup=start_keyboard(),
+        )
         return
     if msg.text == "/tts":
         user_id = msg.from_user.id if msg.from_user else 0

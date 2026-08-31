@@ -114,6 +114,42 @@ def test_allowed_users_env_extends_file(
     assert allowlist.is_user_allowed(333) is False
 
 
+def _load_start_menu():
+    spec = importlib.util.spec_from_file_location(
+        "start_menu", ROOT / "telegram_agent" / "src" / "bot" / "start_menu.py"
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_allowed_users_contains_numeric_id() -> None:
+    text = (ROOT / "config" / "allowed_users.txt").read_text(encoding="utf-8")
+    ids = [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+    assert ids == ["744808663"]
+
+
+def test_start_command_matches_bot_suffix() -> None:
+    menu = _load_start_menu()
+    assert menu.is_start_command("/start") is True
+    assert menu.is_start_command("/start@suyuyu_bot") is True
+    assert menu.is_start_command("/help") is True
+    assert menu.is_start_command("hello") is False
+
+
+def test_start_menu_has_action_buttons() -> None:
+    menu = _load_start_menu()
+    titles = [title for title, _ in menu.START_BUTTONS]
+    assert titles == ["Задать вопрос", "Что ты умеешь?"]
+    assert menu.action_reply("start:ask")
+    assert menu.action_reply("unknown") is None
+
+
 def test_health_port_defaults_to_8080(monkeypatch: pytest.MonkeyPatch) -> None:
     health = _load_health()
     monkeypatch.delenv("PORT", raising=False)
