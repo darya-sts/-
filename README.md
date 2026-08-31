@@ -60,19 +60,3 @@ docker compose up -d --build
 python3 -m pip install pytest
 pytest
 ```
-
-## Cursor Telegram Bot (Hormold)
-
-Отдельный Node.js-бот [Hormold/cursor-telegram-bot](https://github.com/Hormold/cursor-telegram-bot) лежит в `cursor-telegram-bot/`. Это **другой** бот (Grammy): управление Cursor Background Agents, не замена `@suyuyu_bot`.
-
-Нужны переменные: `BOT_TOKEN`, `CURSOR_API_KEY`, `OPENROUTER_API_KEY`.
-
-```bash
-cd cursor-telegram-bot
-pnpm install
-pnpm test
-pnpm run build
-pnpm start
-```
-
-`pnpm` 10 не собирает native-модули сам: для SQLite нужен `better-sqlite3` (`npm run build-release` в его каталоге). Без реального `BOT_TOKEN` Telegram отвечает `401 Unauthorized` на `getMe`.

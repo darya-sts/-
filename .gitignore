@@ -10,7 +10,3 @@ __pycache__/
 *.egg-info/
 .coverage
 data/
-cursor-telegram-bot/node_modules/
-cursor-telegram-bot/dist/
-cursor-telegram-bot/*.db
-cursor-telegram-bot/coverage/
