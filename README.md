@@ -27,6 +27,27 @@ python bot.py
 
 ## Docker
 
+Скопируйте `.env.example` в `.env` и подставьте токен:
+
+```bash
+cp .env.example .env
+```
+
+Запуск через Docker Compose:
+
+```bash
+docker compose up -d --build
+```
+
+Логи и остановка:
+
+```bash
+docker compose logs -f bot
+docker compose down
+```
+
+Сборка и запуск без Compose:
+
 ```bash
 docker build -t tg-bot .
 docker run --rm -e TELEGRAM_BOT_TOKEN="ваш_токен" tg-bot

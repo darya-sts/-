@@ -1,0 +1,11 @@
+services:
+  bot:
+    build: .
+    image: tg-bot:latest
+    container_name: tg-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN in .env}
+    init: true
