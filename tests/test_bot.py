@@ -1,5 +1,7 @@
 import os
+import socket
 import sys
+import urllib.request
 
 import pytest
 from telegram import InlineKeyboardButton
@@ -10,9 +12,11 @@ from bot import (  # noqa: E402
     BUTTON_NO,
     BUTTON_YES,
     get_token,
+    health_port,
     on_button,
     reply_for_choice,
     start,
+    start_health_server,
     start_keyboard,
 )
 
@@ -47,6 +51,26 @@ def test_get_token_exits_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(SystemExit) as exc:
         get_token()
     assert exc.value.code == 1
+
+
+def test_health_port_defaults_to_8080(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("PORT", raising=False)
+    assert health_port() == 8080
+
+
+def test_health_server_returns_ok() -> None:
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    server = start_health_server(port)
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2) as response:
+            assert response.status == 200
+            assert response.read() == b"ok"
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 class FakeMessage:

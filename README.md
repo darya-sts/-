@@ -50,8 +50,16 @@ docker compose down
 
 ```bash
 docker build -t tg-bot .
-docker run --rm -e TELEGRAM_BOT_TOKEN="ваш_токен" tg-bot
+docker run --rm -e TELEGRAM_BOT_TOKEN="ваш_токен" -p 8080:8080 tg-bot
 ```
+
+### Timeweb Cloud Apps
+
+`Dockerfile` и `docker-compose.yml` лежат в корне репозитория. В панели Apps:
+
+1. Тип деплоя — Docker Compose, ветка с этим манифестом.
+2. В переменных приложения задайте `TELEGRAM_BOT_TOKEN` (файл `.env` в git не попадает).
+3. Не указывайте хост-порты `80` и `443` — платформа их резервирует. У сервиса открыт `8080` для health-check.
 
 ## Тесты
 

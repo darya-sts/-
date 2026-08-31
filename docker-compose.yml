@@ -1,12 +1,27 @@
+version: "3.9"
+
 services:
   bot:
-    build: .
-    image: tg-bot:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: tg-bot
     restart: unless-stopped
-    env_file:
-      - .env
+    ports:
+      - "8080:8080"
     environment:
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN in .env}
-    network_mode: bridge
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      PORT: "8080"
     init: true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
