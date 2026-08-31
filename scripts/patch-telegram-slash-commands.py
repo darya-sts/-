@@ -2,9 +2,14 @@
 """Make /# and /workspaces work when Telegram appends @BotName."""
 from pathlib import Path
 
-targets = [
-    Path.home() / ".nvm/versions/node/v22.22.2/lib/node_modules/cursor-telegram-mcp/dist/parseInbound.js",
+roots = [
+    Path.home() / ".nvm",
+    Path.home() / ".npm",
 ]
+targets = []
+for root in roots:
+    if root.exists():
+        targets.extend(root.glob("**/cursor-telegram-mcp/dist/parseInbound.js"))
 needle = "function stripBotCommandMention(text) {"
 insert_fn = '''/** Telegram appends @BotName to slash commands (e.g. /#@Marvin42_main_bot). */
 function stripBotCommandMention(text) {
