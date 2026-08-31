@@ -26,6 +26,7 @@ from rich.panel import Panel
 from telebot.types import Message as TelegramMessage
 
 from ..utils import Timer, extract_response
+from .allowlist import is_user_allowed
 from .config import get_agent_config
 from .tools import get_tools
 from .utils import (
@@ -182,16 +183,9 @@ class Agent:
         users = cfg.get("users") if isinstance(cfg, dict) else None
         return users if isinstance(users, dict) else {}
 
-    def is_allowed(self, user_id: int | str) -> bool:
-        """Check if a Telegram user ID is listed in any group (admin or allowed).
-
-        If no users are listed, the bot is open (needed for a public @bot chat).
-        """
-        uid = str(user_id)
-        listed = any(self._group_users(g) for g in self.user_config)
-        if not listed:
-            return True
-        return any(uid in self._group_users(g) for g in self.user_config)
+    def is_allowed(self, user_id: int | str, username: str | None = None) -> bool:
+        """Allow only users listed in config/allowed_users.txt (ID or @username)."""
+        return is_user_allowed(user_id, username)
 
     def is_admin(self, user_id: int | str) -> bool:
         """Check if a Telegram user ID is listed in the admin group."""
@@ -221,13 +215,13 @@ class Agent:
         self._save_user_config()
         return True
 
-    def _match_group(self, user_id: str, name: str) -> str | None:
+    def _match_group(
+        self, user_id: str, name: str, username: str | None = None
+    ) -> str | None:
         """Resolve the config group handling a user.
 
-        Real Telegram users match by ID. Name is the fallback for
-        pseudo-users that have no real ID (relay self-prompt, CLI), which
-        carry a configured display name. "-1" is the Developer sentinel
-        entry for that pseudo-user.
+        Allowlisted users (config/allowed_users.txt) are routed to the
+        `allowed` swarm even if they are not copied into user_config.json.
         """
         if user_id:
             group = next(
@@ -237,7 +231,7 @@ class Agent:
             if group:
                 return group
         name_lower = name.lower()
-        return next(
+        by_name = next(
             (
                 g
                 for g in self.user_config
@@ -245,11 +239,19 @@ class Agent:
             ),
             None,
         )
+        if by_name:
+            return by_name
+        if is_user_allowed(user_id, username):
+            if "allowed" in self.agents:
+                return "allowed"
+            return next((g for g in self.user_config if g in self.agents), None)
+        return None
 
     async def chat(
         self, content: str | TelegramMessage | Any
     ) -> AsyncGenerator[tuple[str, str, bool, dict[str, Any]]]:
         thread_id, user, uid = "test", "Developer", ""
+        username: str | None = None
         chat_prefix = ""
         is_relay = False
         date = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
@@ -261,6 +263,7 @@ class Agent:
             chat_prefix = f"[chat_id:{thread_id}]"
             is_relay = content.message_id == 0
             uid = str(content.from_user.id) if content.from_user else ""
+            username = content.from_user.username if content.from_user else None
             if content.from_user:
                 user = content.from_user.first_name
             media = getattr(content, "media", [])
@@ -274,7 +277,7 @@ class Agent:
         thread_id = self.thread_mappings.get(base_thread_id, base_thread_id)
 
         # Determine user group from config; reject unknown users silently
-        group = self._match_group(uid, user)
+        group = self._match_group(uid, user, username)
         if group is None:
             # Relay-injected messages (message_id 0, token-authed) don't carry a
             # configured sender: route to the group already handling this chat's

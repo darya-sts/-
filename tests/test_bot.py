@@ -59,6 +59,62 @@ def test_llm_registers_deepseek_provider() -> None:
     assert "ChatDeepSeek" in llm
 
 
+def _load_allowlist():
+    spec = importlib.util.spec_from_file_location(
+        "allowlist", ROOT / "telegram_agent" / "src" / "core" / "allowlist.py"
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_allowed_users_file_exists() -> None:
+    path = ROOT / "config" / "allowed_users.txt"
+    assert path.is_file()
+    text = path.read_text(encoding="utf-8")
+    assert "Telegram ID" in text or "telegram" in text.lower()
+
+
+def test_empty_allowlist_denies_everyone(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    allowlist = _load_allowlist()
+    empty = tmp_path / "allowed_users.txt"
+    empty.write_text("# nobody\n", encoding="utf-8")
+    monkeypatch.setenv("CONFIG_DIR", str(tmp_path))
+    monkeypatch.delenv("ALLOWED_USERS", raising=False)
+    assert allowlist.is_user_allowed(123456789) is False
+    assert allowlist.is_user_allowed(123456789, "anyone") is False
+
+
+def test_file_allowlist_accepts_id_and_username(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    allowlist = _load_allowlist()
+    (tmp_path / "allowed_users.txt").write_text(
+        "123456789\n@My_User\n", encoding="utf-8"
+    )
+    monkeypatch.setenv("CONFIG_DIR", str(tmp_path))
+    monkeypatch.delenv("ALLOWED_USERS", raising=False)
+    assert allowlist.is_user_allowed(123456789) is True
+    assert allowlist.is_user_allowed(999, "my_user") is True
+    assert allowlist.is_user_allowed(111, "other") is False
+
+
+def test_allowed_users_env_extends_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    allowlist = _load_allowlist()
+    (tmp_path / "allowed_users.txt").write_text("111\n", encoding="utf-8")
+    monkeypatch.setenv("CONFIG_DIR", str(tmp_path))
+    monkeypatch.setenv("ALLOWED_USERS", "222,@extra")
+    assert allowlist.is_user_allowed(111) is True
+    assert allowlist.is_user_allowed(222) is True
+    assert allowlist.is_user_allowed(333, "extra") is True
+    assert allowlist.is_user_allowed(333, "nope") is False
+
+
 def test_health_port_defaults_to_8080(monkeypatch: pytest.MonkeyPatch) -> None:
     health = _load_health()
     monkeypatch.delenv("PORT", raising=False)

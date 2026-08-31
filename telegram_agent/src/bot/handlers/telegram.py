@@ -194,7 +194,8 @@ async def telegram_chat(
     # Relay-injected messages carry message_id 0 (Telegram never sends it) and
     # already passed token auth, so they skip the allowlist.
     if not msg.from_user or (
-        msg.message_id != 0 and not instance.agent.is_allowed(msg.from_user.id)
+        msg.message_id != 0
+        and not instance.agent.is_allowed(msg.from_user.id, msg.from_user.username)
     ):
         return
     if msg.text in ["/start", "/help"]:
@@ -400,7 +401,9 @@ async def telegram_chat(
 @handler
 async def telegram_file(instance: AgenticBot, msg: Message) -> None:
     """Handle file/document uploads from users."""
-    if not msg.from_user or not instance.agent.is_allowed(msg.from_user.id):
+    if not msg.from_user or not instance.agent.is_allowed(
+        msg.from_user.id, msg.from_user.username
+    ):
         return
     try:
         if msg.document:
@@ -429,7 +432,9 @@ async def telegram_file(instance: AgenticBot, msg: Message) -> None:
 @handler
 async def telegram_voice(instance: AgenticBot, msg: Message) -> None:
     """Handle voice messages: attach audio as media and process through agent."""
-    if not msg.from_user or not instance.agent.is_allowed(msg.from_user.id):
+    if not msg.from_user or not instance.agent.is_allowed(
+        msg.from_user.id, msg.from_user.username
+    ):
         return
     reply = None
     try:
@@ -483,7 +488,9 @@ _media_groups: dict[str, dict] = {}
 @handler
 async def telegram_image(instance: AgenticBot, msg: Message) -> None:
     """Handle image/photo messages: attach images as media and process through agent."""
-    if not msg.from_user or not instance.agent.is_allowed(msg.from_user.id):
+    if not msg.from_user or not instance.agent.is_allowed(
+        msg.from_user.id, msg.from_user.username
+    ):
         return
     reply = None
     try:

@@ -21,6 +21,7 @@ services:
       CONFIG: /app/config
       CONFIG_DIR: /app/config
       DATA_DIR: /app/data
+      ALLOWED_USERS: ${ALLOWED_USERS:-}
       LANGSMITH_TRACING: "false"
     init: true
     healthcheck:
