@@ -31,7 +31,7 @@ export default function HomePage() {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button render={<Link href="/plan" />}>
-                Открыть план
+                План на 6 месяцев
                 <ArrowRight data-icon="inline-end" />
               </Button>
               <Button variant="outline" render={<Link href="/tools" />}>
@@ -146,11 +146,26 @@ export default function HomePage() {
 
         <section>
           <div className="mb-4 flex items-end justify-between gap-4">
-            <h2 className="font-heading text-2xl">Шесть месяцев</h2>
+            <h2 className="font-heading text-2xl">План на 6 месяцев</h2>
             <Link href="/plan" className="text-sm text-primary underline-offset-4 hover:underline">
-              Чеклист по неделям
+              Бот, агенты, касса
             </Link>
           </div>
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle>Для первого контент-завода</CardTitle>
+              <CardDescription>
+                Пошагово: BotFather и два чата, архитектура «вы + бот + Cursor + n8n», пять агентов
+                в MCP, затем ритм публикаций и одна платная линия. Без фермы каналов и без автопилота X.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button size="sm" render={<Link href="/plan" />}>
+                Открыть план
+                <ArrowRight data-icon="inline-end" />
+              </Button>
+            </CardContent>
+          </Card>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {months.map((m) => (
               <Link key={m.month} href="/plan" className="block">
