@@ -13,24 +13,17 @@ KIND_TOOLS = "tools"
 
 MCP_HELP = (
     "Режим MCP (агенты и внешние инструменты).\n\n"
-    "Обычные сообщения по-прежнему отвечает DeepSeek.\n"
     "Чтобы вызвать MCP-агента:\n"
     "• /mcp ваш запрос\n"
     "• /agent ваш запрос\n"
     "• mcp: ваш запрос\n\n"
     "Список инструментов: /mcp-tools или /mcptools\n\n"
-    "Статья → пост: обработай статью https://example.com и напиши пост\n"
-    "или /mcp process_article с URL.\n\n"
-    "Timeweb Cloud: задайте TIMEWEB_TOKEN "
-    "(панель → API и Terraform). "
-    "Дополнительно: MCP_SERVER_URL / MCP_SERVER_COMMAND / MCP_API_KEY."
+    "Статья → пост: /writer_agent и ссылки на статьи."
 )
 
 MCP_NO_TOOLS = (
     "MCP-серверы не подключены: инструменты не найдены.\n"
-    "Для Timeweb Cloud задайте TIMEWEB_TOKEN "
-    "(https://timeweb.cloud/my/api-keys).\n"
-    "Либо MCP_SERVER_URL / MCP_SERVER_COMMAND и при необходимости MCP_API_KEY."
+    "Для постов в канал используйте /writer_agent и ссылки на статьи."
 )
 
 TIMEWEB_MCP_URL = "https://api.timeweb.cloud/api/v1/mcp/search"
@@ -74,8 +67,6 @@ def parse_mcp_message(text: str | None) -> McpRequest | None:
     if cmd in {"/mcp", "/agent"}:
         query = rest.strip()
         return McpRequest(KIND_QUERY, query) if query else McpRequest(KIND_HELP)
-    if is_article_mcp_request(raw):
-        return McpRequest(KIND_QUERY, raw)
     return None
 
 

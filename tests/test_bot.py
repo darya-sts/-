@@ -145,10 +145,10 @@ def test_start_command_matches_bot_suffix() -> None:
 def test_start_menu_has_action_buttons() -> None:
     menu = _load_start_menu()
     titles = [title for title, _ in menu.START_BUTTONS]
-    assert titles == ["Задать вопрос", "Что ты умеешь?", "MCP-агент"]
-    assert menu.action_reply("start:ask")
-    assert menu.action_reply("start:mcp")
+    assert titles == ["Обратиться к агенту"]
+    assert "/writer_agent" in menu.action_reply("start:agent")
     assert menu.action_reply("unknown") is None
+    assert "Timeweb Cloud: задайте TIMEWEB_TOKEN" not in menu.COMMANDS_HELP
 
 
 def _load_mcp_routing():
@@ -249,9 +249,8 @@ def test_timeweb_mcp_is_installed() -> None:
     assert config["headers"]["Authorization"] == "Bearer {ENV:TIMEWEB_TOKEN}"
     compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
     assert "TIMEWEB_TOKEN: ${TIMEWEB_TOKEN:-}" in compose
-    assert "TIMEWEB_TOKEN" in routing.MCP_HELP
-    assert "TIMEWEB_TOKEN" in routing.MCP_NO_TOOLS
-    # Without a token the loader must skip this file (placeholder stays unresolved).
+    assert "Timeweb Cloud: задайте TIMEWEB_TOKEN" not in routing.MCP_HELP
+    assert "MCP_SERVER_URL / MCP_SERVER_COMMAND / MCP_API_KEY" not in routing.MCP_HELP
     raw = path.read_text(encoding="utf-8")
     assert "{ENV:TIMEWEB_TOKEN}" in raw
     stdio_example = ROOT / "config" / "tools" / "mcp" / "_timeweb_stdio.example.json"
@@ -284,11 +283,61 @@ def test_deepseek_mcp_server_is_wired() -> None:
 def test_article_message_routes_to_mcp() -> None:
     routing = _load_mcp_routing()
     sample = "обработай статью https://example.com/some-article и напиши пост"
-    req = routing.parse_mcp_message(sample)
-    assert req is not None and req.kind == "query"
-    assert "example.com" in req.query
-    assert routing.parse_mcp_message("смотри https://example.com") is None
-    assert routing.parse_mcp_message("напиши пост без ссылки") is None
+    assert routing.parse_mcp_message(sample) is None
+
+
+def _load_writer_agent():
+    spec = importlib.util.spec_from_file_location(
+        "writer_agent", ROOT / "telegram_agent" / "src" / "core" / "writer_agent.py"
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_writer_agent_parses_multiple_urls() -> None:
+    writer = _load_writer_agent()
+    help_req = writer.parse_writer_message("/writer_agent")
+    assert help_req is not None and help_req.kind == "await"
+    run = writer.parse_writer_message(
+        "/writer_agent@suyuyu_bot https://a.example/x https://b.example/y"
+    )
+    assert run is not None and run.kind == "run"
+    assert run.urls == ["https://a.example/x", "https://b.example/y"]
+    assert writer.parse_writer_message("просто текст") is None
+    urls = writer.extract_urls(
+        "смотри https://one.test/a, и ещё https://two.test/b."
+    )
+    assert urls == ["https://one.test/a", "https://two.test/b"]
+
+
+def test_writer_draft_approval_cycle() -> None:
+    writer = _load_writer_agent()
+    draft_id = writer.save_draft(user_id=744808663, text="Пост", urls=["https://a.test"])
+    assert writer.parse_writer_callback(f"writer:ok:{draft_id}") == ("ok", draft_id)
+    assert writer.parse_writer_callback(f"writer:no:{draft_id}") == ("no", draft_id)
+    assert writer.get_draft(draft_id)["text"] == "Пост"
+    assert writer.pop_draft(draft_id)["user_id"] == 744808663
+    assert writer.get_draft(draft_id) is None
+
+
+def test_channel_id_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    writer = _load_writer_agent()
+    monkeypatch.delenv("TELEGRAM_CHANNEL_ID", raising=False)
+    monkeypatch.delenv("TELEGRAM_CHANNEL", raising=False)
+    assert writer.channel_chat_id() is None
+    monkeypatch.setenv("TELEGRAM_CHANNEL_ID", "@my_channel")
+    assert writer.channel_chat_id() == "@my_channel"
+    monkeypatch.setenv("TELEGRAM_CHANNEL_ID", "-100123")
+    assert writer.channel_chat_id() == -100123
+
+
+def test_compose_passes_channel_id() -> None:
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID:-}" in compose
+    example = (ROOT / ".env.example").read_text(encoding="utf-8")
+    assert "TELEGRAM_CHANNEL_ID=" in example
 
 
 def test_extract_article_and_process_without_key(
@@ -324,6 +373,9 @@ def test_extract_article_and_process_without_key(
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     assert article.generate_post("text") == "DEEPSEEK_API_KEY не задан."
     assert article.process_article("not-a-url").startswith("Нужен ")
+    post, errors = article.process_articles([])
+    assert post == ""
+    assert errors
 
 
 def test_health_port_defaults_to_8080(monkeypatch: pytest.MonkeyPatch) -> None:

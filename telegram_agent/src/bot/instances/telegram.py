@@ -171,11 +171,9 @@ class TelegramBot(Bot):
         """Set up message handlers for the bot."""
         await self.core.set_my_commands(
             [
-                BotCommand("start", "Start the bot"),
-                BotCommand("mcp", "Ask an MCP agent"),
-                BotCommand("mcptools", "List MCP tools"),
-                BotCommand("tts", "Toggle TTS on/off"),
-                BotCommand("cancel", "Cancel the current response"),
+                BotCommand("start", "Меню агентов"),
+                BotCommand("writer_agent", "Пост в канал по статьям"),
+                BotCommand("cancel", "Отменить"),
             ]
         )
         me = await self.core.get_me()
@@ -221,9 +219,17 @@ class TelegramBot(Bot):
         if handle_start_callback:
 
             @self.core.callback_query_handler(
-                func=lambda call: bool(call.data) and call.data.startswith("start:")
+                func=lambda call: bool(call.data)
+                and (
+                    call.data.startswith("start:") or call.data.startswith("writer:")
+                )
             )
             async def _handle_start_callback(call: CallbackQuery) -> None:
+                if call.data and call.data.startswith("writer:"):
+                    handle_writer = kwargs.get("writer_callback")
+                    if handle_writer:
+                        await handle_writer(call)
+                    return
                 await handle_start_callback(call)
 
         if handle_document:

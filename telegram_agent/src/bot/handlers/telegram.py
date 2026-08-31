@@ -1,6 +1,6 @@
 """Telegram bot handlers."""
 
-from asyncio import Event, create_subprocess_exec, gather, sleep
+from asyncio import Event, create_subprocess_exec, gather, sleep, to_thread
 from datetime import datetime
 from io import BytesIO
 from os import getenv
@@ -14,20 +14,28 @@ from dotenv import load_dotenv
 from langchain.messages import HumanMessage
 from telebot.types import CallbackQuery, InputFile, InputMediaPhoto, Message
 
-from ...core.llm import LLM, can_listen, can_see
-from ...core.progress import (
-    ProgressTracker,
-    default_max_lines,
-    reset_progress_sink,
-    reset_turn_tracker,
-    set_progress_sink,
-    set_turn_tracker,
-)
+from ...core.llm import LLM, can_listen
 from ...utils import extract_response
 from ..abstract import AgenticBot, handler
 from ...core.mcp_mode import format_mcp_status, run_mcp_query
 from ...core.mcp_routing import KIND_HELP, KIND_TOOLS, MCP_HELP, parse_mcp_message
-from ..start_menu import action_reply, is_start_command, start_keyboard
+from ...core.writer_agent import (
+    KIND_AWAIT,
+    KIND_RUN,
+    WRITER_USAGE,
+    approval_keyboard,
+    channel_chat_id,
+    extract_urls,
+    get_draft,
+    is_pending,
+    parse_writer_callback,
+    parse_writer_message,
+    pop_draft,
+    run_process_articles,
+    save_draft,
+    set_pending,
+)
+from ..start_menu import COMMANDS_HELP, action_reply, is_start_command, start_keyboard
 from ..utils import str_size, unpack_user
 
 load_dotenv()
@@ -104,20 +112,6 @@ async def _media_to_text(media: list[dict], context: str = "") -> str:
     return extract_response(response)[0].strip()
 
 
-def _make_progress_sink(instance: AgenticBot, reply: Message) -> Any:
-    """Build a progress sink that live-edits the reply message with a progress panel.
-
-    Tools render their own panel (status line, session link, rolling logs)
-    and emit it as one string; this sink replaces the model-text slot below
-    the tool logs, so only actual panel changes trigger an edit.
-    """
-
-    async def sink(line: str) -> None:
-        await instance.bot.edit(reply, line, model_text=True)
-
-    return sink
-
-
 @handler
 async def telegram_start_callback(instance: AgenticBot, call: CallbackQuery) -> None:
     """Handle /start action buttons."""
@@ -128,6 +122,131 @@ async def telegram_start_callback(instance: AgenticBot, call: CallbackQuery) -> 
     text = action_reply(call.data)
     if text and isinstance(call.message, Message):
         await instance.bot.send(call.message, text)
+
+
+def _urls_from_message(msg: Message) -> list[str]:
+    text = msg.text or msg.caption or ""
+    urls = extract_urls(text)
+    entities = list(msg.entities or []) + list(getattr(msg, "caption_entities", None) or [])
+    for ent in entities:
+        if ent.type == "url":
+            urls.extend(extract_urls(text[ent.offset : ent.offset + ent.length]))
+        elif ent.type == "text_link" and ent.url:
+            urls.extend(extract_urls(ent.url) or [ent.url])
+    unique: list[str] = []
+    seen: set[str] = set()
+    for url in urls:
+        if url in seen:
+            continue
+        seen.add(url)
+        unique.append(url)
+    return unique
+
+
+async def _run_writer_and_ask(
+    instance: AgenticBot, msg: Message, urls: list[str]
+) -> None:
+    """Generate a post and send it to the user for approval."""
+    waiting = await instance.bot.send(
+        msg, f"⏳ Пишу пост по {len(urls)} статьям…"
+    )
+    try:
+        post, errors = await to_thread(run_process_articles, urls)
+    except Exception as e:
+        print_exc()
+        await telegram_report_issue(instance, msg, waiting, e)
+        return
+    try:
+        await instance.bot.delete(waiting)
+    except Exception:
+        pass
+    if not post or post.startswith("DEEPSEEK_API_KEY"):
+        detail = post or "\n".join(errors) or "Не удалось написать пост."
+        await instance.bot.send(msg, detail)
+        return
+    if post.startswith("Ошибка DeepSeek"):
+        await instance.bot.send(msg, post)
+        return
+    user_id = msg.from_user.id if msg.from_user else 0
+    draft_id = save_draft(user_id=user_id, text=post, urls=urls)
+    preview = (
+        "Черновик поста. Нажмите «Опубликовать», чтобы отправить в канал, "
+        "или «Отклонить».\n\n"
+        f"{post}"
+    )
+    if errors:
+        preview += "\n\n⚠️ Не удалось прочитать:\n" + "\n".join(errors)
+    if len(preview) > 3500:
+        preview = preview[:3490] + "…"
+    await instance.bot.send(msg, preview, reply_markup=approval_keyboard(draft_id))
+
+
+@handler
+async def telegram_writer_callback(instance: AgenticBot, call: CallbackQuery) -> None:
+    """Publish or reject a writer-agent draft."""
+    if not call.from_user or not instance.agent.is_allowed(call.from_user.id):
+        await instance.bot.core.answer_callback_query(call.id)
+        return
+    parsed = parse_writer_callback(call.data)
+    if parsed is None:
+        await instance.bot.core.answer_callback_query(call.id)
+        return
+    action, draft_id = parsed
+    draft = get_draft(draft_id)
+    if draft is None:
+        await instance.bot.core.answer_callback_query(
+            call.id, "Черновик уже обработан или устарел."
+        )
+        return
+    if draft["user_id"] != call.from_user.id:
+        await instance.bot.core.answer_callback_query(
+            call.id, "Согласовать может только автор черновика."
+        )
+        return
+    if not isinstance(call.message, Message):
+        await instance.bot.core.answer_callback_query(call.id)
+        return
+
+    if action == "no":
+        pop_draft(draft_id)
+        await instance.bot.core.answer_callback_query(call.id, "Пост отклонён")
+        try:
+            await instance.bot.core.edit_message_reply_markup(
+                call.message.chat.id, call.message.id, reply_markup=None
+            )
+        except Exception:
+            pass
+        await instance.bot.send(call.message, "❌ Пост отклонён, в канал не отправлялся.")
+        return
+
+    channel = channel_chat_id()
+    if channel is None:
+        await instance.bot.core.answer_callback_query(
+            call.id, "Не задан TELEGRAM_CHANNEL_ID"
+        )
+        await instance.bot.send(
+            call.message,
+            "Чтобы публиковать, задайте TELEGRAM_CHANNEL_ID "
+            "(@channel или -100…) и добавьте бота администратором канала.",
+        )
+        return
+    try:
+        await instance.bot.core.send_message(channel, draft["text"])
+    except Exception as e:
+        await instance.bot.core.answer_callback_query(call.id, "Не удалось опубликовать")
+        await instance.bot.send(
+            call.message, f"Не удалось отправить пост в канал: {e}"
+        )
+        return
+    pop_draft(draft_id)
+    await instance.bot.core.answer_callback_query(call.id, "Опубликовано")
+    try:
+        await instance.bot.core.edit_message_reply_markup(
+            call.message.chat.id, call.message.id, reply_markup=None
+        )
+    except Exception:
+        pass
+    await instance.bot.send(call.message, "✅ Пост опубликован в канал.")
 
 
 @handler
@@ -241,6 +360,7 @@ async def telegram_chat(
 
     chat_id = msg.chat.id
     if msg.text == "/cancel":
+        set_pending(chat_id, False)
         if chat_id in instance.cancel_events:
             instance.cancel_events[chat_id].set()
             await instance.bot.send(msg, "⏹️ Cancelling...")
@@ -248,7 +368,35 @@ async def telegram_chat(
             await instance.bot.send(msg, "Nothing to cancel.")
         return
 
-    # Explicit MCP path: /mcp, /agent, mcp: — regular text stays on DeepSeek.
+    writer_req = parse_writer_message(msg.text)
+    urls = _urls_from_message(msg)
+    if writer_req is None and is_pending(chat_id) and urls:
+        writer_req = parse_writer_message("/writer_agent " + " ".join(urls))
+    if writer_req is not None:
+        if writer_req.kind == KIND_AWAIT:
+            set_pending(chat_id, True)
+            await instance.bot.send(msg, WRITER_USAGE)
+            return
+        if writer_req.kind == KIND_RUN:
+            set_pending(chat_id, False)
+            if chat_id in instance.cancel_events:
+                await instance.bot.send(
+                    msg,
+                    "⏳ I'm still working on your previous message. Send /cancel to abort.",
+                )
+                return
+            instance.cancel_events[chat_id] = Event()
+            try:
+                await _run_writer_and_ask(instance, msg, writer_req.urls)
+            finally:
+                instance.cancel_events.pop(chat_id, None)
+            return
+
+    if is_pending(chat_id) and not urls:
+        await instance.bot.send(msg, WRITER_USAGE)
+        return
+
+    # Optional MCP path: /mcp, /agent, mcp:
     mcp_request = parse_mcp_message(msg.text)
     if mcp_request is not None:
         if mcp_request.kind == KIND_HELP:
@@ -275,173 +423,9 @@ async def telegram_chat(
             instance.cancel_events.pop(chat_id, None)
         return
 
-    # Rate limiting: reject if this chat already has an active agent run
-    if chat_id in instance.cancel_events:
-        await instance.bot.send(
-            msg, "⏳ I'm still working on your previous message. Send /cancel to abort."
-        )
-        return
-
-    # Claim the slot immediately to prevent concurrent runs in the same chat.
-    # This must happen before any await to avoid a TOCTOU race.
-    cancel_event = Event()
-    instance.cancel_events[chat_id] = cancel_event
-
-    # Consume pending images for this chat
-    pending = instance.pending_media.pop(msg.chat.id, [])
-    if pending:
-        img_paths = [p for _, p in pending]
-        main = LLM.pick()
-        if can_see(main):
-            existing = getattr(msg, "media", [])
-            msg.media = [  # ty: ignore[unresolved-attribute]
-                *existing,
-                *[
-                    {"type": "media", "data": img, "mime_type": "image/jpeg"}
-                    for img, _ in pending
-                ],
-            ]
-            paths_str = "\n".join(f"  - {p}" for p in img_paths)
-            msg.text = (
-                f"{msg.text or ''}\n\n[Received image files:]\n{paths_str}".strip()
-            )
-        else:
-            # Describe each image individually and persist descriptions to disk
-            # so the agent can reference them later even after context loss.
-            desc_parts = []
-            for img_bytes, img_path in pending:
-                media_dicts = [
-                    {"type": "media", "data": img_bytes, "mime_type": "image/jpeg"}
-                ]
-                desc = await _media_to_text(media_dicts, msg.text or "")
-                desc_path = str(
-                    Path(img_path).parent / f"{Path(img_path).stem}_desc.json"
-                )
-                async with aiofiles.open(desc_path, "w", encoding="utf-8") as f:
-                    await f.write(desc)
-                desc_parts.append(
-                    f"  - {img_path}\n    Description: {desc_path}\n    Context: {desc}"
-                )
-            msg.text = (
-                f"{msg.text or ''}\n\n[Received images:]\n" + "\n".join(desc_parts)
-            ).strip()
-
-    if overwrite is None:
-        init = instance.bot.reply if msg.chat.type != "private" else instance.bot.send
-        overwrite = await init(msg)
-    reply = overwrite
-    prev = ""
-    # Long-running tools (e.g. opencode sessions) stream a live progress panel
-    # that is rendered in the model-text slot below the tool logs.
-    # One shared tracker per turn: consecutive tool calls append to the same
-    # panel instead of each starting a fresh one that wipes the previous logs.
-    sink_token = set_progress_sink(_make_progress_sink(instance, reply))
-    turn_tracker = ProgressTracker(max_lines=default_max_lines())
-    tracker_token = set_turn_tracker(turn_tracker)
-    try:
-        async for agent, step, done, extra in instance.agent.chat(msg):
-            if cancel_event.is_set():
-                break
-            if step != prev:
-                prev = step
-                await instance.bot.edit(
-                    reply,
-                    step,
-                    final=done,
-                    agent=agent,
-                    model_text=extra.get("model_text", False),
-                    tool_block=extra.get("tool_block", False),
-                )
-                if not done and not extra.get("model_text") and extra.get("tool_ok"):
-                    tool = extra.get("tool")
-                    if tool and tool in instance.managers:
-                        await instance.managers[tool].notify(
-                            msg.chat.id, extra.get("output")
-                        )
-                elif (
-                    not done
-                    and not extra.get("model_text")
-                    and extra.get("tool_ok") is False
-                ):
-                    await telegram_report_issue(
-                        instance,
-                        msg,
-                        reply,
-                        f"{agent} -> Tool error = {extra.get('tool')}",
-                    )
-            if not done:
-                await sleep(0.1)  # No need to spam
-            elif extra.get("images"):
-                paths = [p for p in extra["images"] if await aiofiles.os.path.exists(p)]
-                if paths:
-                    await instance.bot.core.send_chat_action(
-                        msg.chat.id, "upload_photo"
-                    )
-                    if len(paths) == 1:
-                        async with aiofiles.open(paths[0], "rb") as f:
-                            img_bytes = await f.read()
-                        await instance.bot.core.send_photo(
-                            msg.chat.id,
-                            img_bytes,
-                            show_caption_above_media=True,
-                        )
-                    else:
-                        for i in range(0, len(paths), 10):
-                            batch = paths[i : i + 10]
-                            imgs = await gather(*(_read_image(p) for p in batch))
-                            media = [
-                                InputMediaPhoto(InputFile(BytesIO(b))) for b in imgs
-                            ]
-                            await instance.bot.core.send_media_group(msg.chat.id, media)
-            # TTS: send audio of the final response if enabled
-            if (
-                done
-                and msg.from_user
-                and instance.tts_enabled.get(msg.from_user.id)
-                and LLM.pick("tts")
-            ):
-                instance.log.info(f"[{msg.chat.id}] Generating TTS voice message...")
-                await instance.bot.core.send_chat_action(msg.chat.id, "upload_voice")
-                recording = await instance.bot.send(msg, "🎙️ I'm recording...")
-                adapted = await LLM.tts_adapt(step)
-                audio_bytes = await LLM.tts(adapted)
-                if not audio_bytes:
-                    instance.log.warning(
-                        f"[{msg.chat.id}] TTS generation returned no audio"
-                    )
-                    await instance.bot.send(
-                        msg, "🎙️ TTS failed — check logs for details."
-                    )
-                if audio_bytes:
-                    # Telegram voice messages require OGG/OPUS
-                    proc = await create_subprocess_exec(
-                        "ffmpeg",
-                        "-i",
-                        "pipe:0",
-                        "-c:a",
-                        "libopus",
-                        "-f",
-                        "ogg",
-                        "pipe:1",
-                        stdin=PIPE,
-                        stdout=PIPE,
-                        stderr=DEVNULL,
-                    )
-                    ogg, _ = await proc.communicate(audio_bytes)
-                    voice = ogg if proc.returncode == 0 and ogg else audio_bytes
-                    await instance.bot.core.send_voice(
-                        msg.chat.id, InputFile(BytesIO(voice), file_name="voice.ogg")
-                    )
-                    instance.log.info(f"[{msg.chat.id}] TTS voice message sent")
-                await instance.bot.delete(recording)
-    except Exception as e:
-        print_exc()
-        await telegram_report_issue(instance, msg, reply, e)
-    finally:
-        reset_progress_sink(sink_token)
-        reset_turn_tracker(tracker_token)
-        instance.cancel_events.pop(chat_id, None)
+    await instance.bot.send(msg, COMMANDS_HELP)
     instance.log.sent(msg, timer)
+    return
 
 
 @handler

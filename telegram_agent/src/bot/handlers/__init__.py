@@ -7,6 +7,7 @@ from .telegram import (
     telegram_report_issue,
     telegram_start_callback,
     telegram_voice,
+    telegram_writer_callback,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "telegram_report_issue",
     "telegram_start_callback",
     "telegram_voice",
+    "telegram_writer_callback",
 ]

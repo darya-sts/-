@@ -13,6 +13,7 @@ from .handlers import (
     telegram_image,
     telegram_start_callback,
     telegram_voice,
+    telegram_writer_callback,
 )
 from .instances import TelegramBot
 from .logging import TelegramLogger
@@ -54,6 +55,7 @@ async def run_telegram_bot(dev: bool = False) -> None:
     handlers: dict[str, Any] = {
         "chat": telegram_chat,
         "start_callback": telegram_start_callback,
+        "writer_callback": telegram_writer_callback,
     }
     if getenv("TRANSMISSION_URL"):
         managers["download_torrent"] = DownloadManager

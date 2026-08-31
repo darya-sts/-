@@ -1,27 +1,25 @@
-"""Start menu: /start shows action buttons."""
+"""Start menu: /start shows a single agent button."""
 
 from __future__ import annotations
 
 START_PREFIX = "start:"
 
+COMMANDS_HELP = (
+    "Чтобы запустить агента, отправьте команду:\n\n"
+    "/writer_agent — написать пост в канал по ссылкам на статьи\n"
+    "Пример:\n"
+    "/writer_agent https://example.com/a https://example.com/b\n\n"
+    "Можно несколько ссылок сразу или прислать их следующим сообщением. "
+    "Готовый пост придёт вам на согласование. "
+    "«Опубликовать» отправит его в канал."
+)
+
 START_ACTIONS: dict[str, str] = {
-    "start:ask": "Напишите ваш вопрос — отвечу с помощью DeepSeek.",
-    "start:skills": (
-        "Я чат-бот @suyuyu_bot. Обычные сообщения отвечает DeepSeek. "
-        "Статью в пост: «обработай статью https://… и напиши пост» "
-        "или /mcp. Timeweb Cloud: /mcp-tools, нужен TIMEWEB_TOKEN."
-    ),
-    "start:mcp": (
-        "MCP: /mcp запрос, /mcp-tools, или «обработай статью URL и напиши пост». "
-        "Есть process_article (DeepSeek) и инструменты Timeweb Cloud. "
-        "Обычный чат по-прежнему идёт через DeepSeek."
-    ),
+    "start:agent": COMMANDS_HELP,
 }
 
 START_BUTTONS: tuple[tuple[str, str], ...] = (
-    ("Задать вопрос", "start:ask"),
-    ("Что ты умеешь?", "start:skills"),
-    ("MCP-агент", "start:mcp"),
+    ("Обратиться к агенту", "start:agent"),
 )
 
 

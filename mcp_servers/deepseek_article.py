@@ -13,6 +13,8 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 MAX_ARTICLE_CHARS = 5000
+MAX_COMBINED_CHARS = 12000
+MAX_URLS = 8
 USER_AGENT = "suyuyu-bot/1.0 (+https://t.me/suyuyu_bot)"
 
 
@@ -99,7 +101,10 @@ def generate_post(text: str, style: str = "telegram") -> str:
     if not api_key:
         return "DEEPSEEK_API_KEY не задан."
     prompt = (
-        f"Напиши пост для Telegram-канала в стиле {style} на основе следующего текста:\n\n"
+        f"Напиши один готовый пост для Telegram-канала в стиле {style}. "
+        "Если источников несколько, объедини главное в один текст. "
+        "Без заголовка «Пост», без преамбулы, без хештегов-воды. "
+        "Только текст, который можно сразу опубликовать.\n\n"
         f"{text}"
     )
     payload = {
@@ -140,3 +145,35 @@ def process_article(url: str, style: str = "telegram") -> str:
     if article_text.startswith(("Нужен ", "Ошибка ", "Не удалось ")):
         return article_text
     return generate_post(article_text, style)
+
+
+def process_articles(
+    urls: list[str], style: str = "telegram"
+) -> tuple[str, list[str]]:
+    """Fetch several articles and write one combined Telegram post."""
+    unique: list[str] = []
+    seen: set[str] = set()
+    for url in urls:
+        item = (url or "").strip()
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        unique.append(item)
+        if len(unique) >= MAX_URLS:
+            break
+    if not unique:
+        return "", ["Пришлите хотя бы одну ссылку на статью."]
+
+    chunks: list[str] = []
+    errors: list[str] = []
+    for url in unique:
+        article_text = extract_article_text(url)
+        if article_text.startswith(("Нужен ", "Ошибка ", "Не удалось ")):
+            errors.append(f"{url}: {article_text}")
+            continue
+        chunks.append(f"Источник: {url}\n{article_text}")
+    if not chunks:
+        return "", errors
+    combined = "\n\n---\n\n".join(chunks)[:MAX_COMBINED_CHARS]
+    post = generate_post(combined, style)
+    return post, errors
