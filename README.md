@@ -13,7 +13,7 @@
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 3. Задайте токен и запустите бота:
@@ -24,6 +24,13 @@ python bot.py
 ```
 
 Токен не храните в репозитории. Можно скопировать `.env.example` в `.env` и подставить значение локально.
+
+## Docker
+
+```bash
+docker build -t tg-bot .
+docker run --rm -e TELEGRAM_BOT_TOKEN="ваш_токен" tg-bot
+```
 
 ## Тесты
 
