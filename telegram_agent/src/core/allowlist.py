@@ -1,4 +1,4 @@
-"""Allowlist of Telegram users who may talk to the bot."""
+"""Allowlist of Telegram user IDs who may talk to the bot."""
 
 from __future__ import annotations
 
@@ -11,13 +11,11 @@ def _config_dir() -> Path:
 
 
 def normalize_entry(entry: str) -> str:
-    """Normalize an ID or @username. Empty / comments become ''."""
+    """Keep only a numeric Telegram ID. Comments and other text become ''."""
     value = entry.strip()
     if not value or value.startswith("#"):
         return ""
-    if value.startswith("@"):
-        return value[1:].lower()
-    return value.lower() if not value.isdigit() else value
+    return value if value.isdigit() else ""
 
 
 def _entries_from_text(text: str) -> set[str]:
@@ -25,7 +23,7 @@ def _entries_from_text(text: str) -> set[str]:
 
 
 def load_allowlist(path: Path | None = None) -> set[str]:
-    """Load allowed IDs/usernames from file and optional ALLOWED_USERS env."""
+    """Load allowed numeric IDs from file and optional ALLOWED_USERS env."""
     allowlist: set[str] = set()
     file_path = path or (_config_dir() / "allowed_users.txt")
     if file_path.is_file():
@@ -36,15 +34,9 @@ def load_allowlist(path: Path | None = None) -> set[str]:
     return allowlist
 
 
-def is_user_allowed(user_id: int | str | None, username: str | None = None) -> bool:
-    """True only if the numeric ID or @username is on the allowlist."""
+def is_user_allowed(user_id: int | str | None) -> bool:
+    """True only if the numeric Telegram ID is on the allowlist."""
     allowlist = load_allowlist()
-    if not allowlist:
+    if not allowlist or user_id is None:
         return False
-    if user_id is not None and str(user_id) in allowlist:
-        return True
-    if username:
-        name = username.lstrip("@").lower()
-        if name and name in allowlist:
-            return True
-    return False
+    return str(user_id) in allowlist

@@ -85,21 +85,21 @@ def test_empty_allowlist_denies_everyone(
     monkeypatch.setenv("CONFIG_DIR", str(tmp_path))
     monkeypatch.delenv("ALLOWED_USERS", raising=False)
     assert allowlist.is_user_allowed(123456789) is False
-    assert allowlist.is_user_allowed(123456789, "anyone") is False
 
 
-def test_file_allowlist_accepts_id_and_username(
+def test_file_allowlist_accepts_numeric_id_only(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     allowlist = _load_allowlist()
     (tmp_path / "allowed_users.txt").write_text(
-        "123456789\n@My_User\n", encoding="utf-8"
+        "123456789\n@My_User\nnot-an-id\n", encoding="utf-8"
     )
     monkeypatch.setenv("CONFIG_DIR", str(tmp_path))
     monkeypatch.delenv("ALLOWED_USERS", raising=False)
     assert allowlist.is_user_allowed(123456789) is True
-    assert allowlist.is_user_allowed(999, "my_user") is True
-    assert allowlist.is_user_allowed(111, "other") is False
+    assert allowlist.is_user_allowed(999) is False
+    assert allowlist.normalize_entry("@My_User") == ""
+    assert allowlist.normalize_entry("not-an-id") == ""
 
 
 def test_allowed_users_env_extends_file(
@@ -111,8 +111,7 @@ def test_allowed_users_env_extends_file(
     monkeypatch.setenv("ALLOWED_USERS", "222,@extra")
     assert allowlist.is_user_allowed(111) is True
     assert allowlist.is_user_allowed(222) is True
-    assert allowlist.is_user_allowed(333, "extra") is True
-    assert allowlist.is_user_allowed(333, "nope") is False
+    assert allowlist.is_user_allowed(333) is False
 
 
 def test_health_port_defaults_to_8080(monkeypatch: pytest.MonkeyPatch) -> None:

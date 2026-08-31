@@ -184,8 +184,8 @@ class Agent:
         return users if isinstance(users, dict) else {}
 
     def is_allowed(self, user_id: int | str, username: str | None = None) -> bool:
-        """Allow only users listed in config/allowed_users.txt (ID or @username)."""
-        return is_user_allowed(user_id, username)
+        """Allow only numeric Telegram IDs from config/allowed_users.txt."""
+        return is_user_allowed(user_id)
 
     def is_admin(self, user_id: int | str) -> bool:
         """Check if a Telegram user ID is listed in the admin group."""
@@ -241,7 +241,7 @@ class Agent:
         )
         if by_name:
             return by_name
-        if is_user_allowed(user_id, username):
+        if is_user_allowed(user_id):
             if "allowed" in self.agents:
                 return "allowed"
             return next((g for g in self.user_config if g in self.agents), None)
