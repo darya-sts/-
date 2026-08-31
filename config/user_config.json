@@ -1,0 +1,6 @@
+{
+  "allowed": {
+    "users": {},
+    "agents": ["Friendly Agent"]
+  }
+}

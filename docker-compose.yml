@@ -11,7 +11,17 @@ services:
       - "8080:8080"
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_API_MODEL: ${DEEPSEEK_API_MODEL:-deepseek-chat|text+structured}
+      DEEPSEEK_API_BASE: ${DEEPSEEK_API_BASE:-https://api.deepseek.com}
+      LLM_ORDER: ${LLM_ORDER:-deepseek}
+      LLM_ORDER_FAST: ${LLM_ORDER_FAST:-deepseek}
+      SKIP_PLAYWRIGHT: "1"
       PORT: "8080"
+      CONFIG: /app/config
+      CONFIG_DIR: /app/config
+      DATA_DIR: /app/data
+      LANGSMITH_TRACING: "false"
     init: true
     healthcheck:
       test:
@@ -24,4 +34,4 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 40s

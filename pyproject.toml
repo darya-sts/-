@@ -1,0 +1,55 @@
+[project]
+name = "telegram-agent-mcp-client"
+version = "2.4.0"
+description = "Telegram Agent MCP Client"
+authors = [{ name = "philogicae" }]
+requires-python = ">=3.14,<4.0"
+readme = "README.md"
+license = "MIT"
+dependencies = [
+    "addict",
+    "aiofiles",
+    "aiohttp",
+    "aiosqlite",
+    "langchain",
+    "langchain-core",
+    "langchain-mcp-adapters",
+    "mcp>=1.28.0,<2.0.0",
+    "langchain[google-genai,anthropic,openai,ollama,deepseek]",
+    "langgraph",
+    "langgraph-checkpoint-sqlite",
+    "langgraph-swarm",
+    "matplotlib",
+    "playwright",
+    "pydantic",
+    "pyjson5",
+    "pytelegrambotapi",
+    "python-dotenv",
+    "rich",
+    "transmission-mcp",
+    "unidecode",
+]
+
+[project.urls]
+Repository = "https://github.com/philogicae/telegram-agent-mcp-client"
+Release = "https://github.com/philogicae/telegram-agent-mcp-client/releases"
+DeepWiki = "https://deepwiki.com/philogicae/telegram-agent-mcp-client"
+
+[project.scripts]
+telegram-agent-mcp-client = "telegram_agent.__main__:cli"
+
+[dependency-groups]
+dev = ["ruff", "ty"]
+
+[tool.ty.rules]
+no-matching-overload = "ignore"
+
+[tool.hatch.build]
+include = ["telegram_agent"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

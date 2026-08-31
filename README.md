@@ -1,68 +1,49 @@
-# Telegram-бот: да / нет
+# @suyuyu_bot — Telegram Agent + DeepSeek
 
-Минимальный бот: команда `/start` показывает две кнопки — **да** и **нет**.
+Чат-бот [@suyuyu_bot](https://t.me/suyuyu_bot) на базе [telegram-agent-mcp-client](https://github.com/philogicae/telegram-agent-mcp-client). Сообщения обрабатывает агент LangGraph Swarm, ответы даёт модель **DeepSeek**.
 
-- **да** → бот отвечает `привет`
-- **нет** → бот отвечает `пока`
+`/start` и `/help` отвечают приветствием. Дальше бот ведёт обычный диалог.
 
-## Запуск
+Исходный агент распространяется по лицензии MIT (см. `LICENSE.telegram-agent-mcp-client`).
 
-1. Создайте бота в Telegram через [@BotFather](https://t.me/BotFather) и скопируйте токен.
-2. Установите зависимости:
+## Переменные окружения
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-```
+Скопируйте `.env.example` в `.env` и заполните:
 
-3. Задайте токен и запустите бота:
+| Переменная | Назначение |
+| --- | --- |
+| `TELEGRAM_BOT_TOKEN` | Токен `@suyuyu_bot` от [@BotFather](https://t.me/BotFather) |
+| `DEEPSEEK_API_KEY` | API-ключ DeepSeek для чата |
+| `DEEPSEEK_API_MODEL` | Модель, по умолчанию `deepseek-chat\|text+structured` |
+| `DEEPSEEK_API_BASE` | `https://api.deepseek.com` |
+| `LLM_ORDER` / `LLM_ORDER_FAST` | Порядок провайдеров, по умолчанию `deepseek` |
 
-```bash
-export TELEGRAM_BOT_TOKEN="ваш_токен"
-python bot.py
-```
+Файл `.env` в git не попадает.
 
-Токен не храните в репозитории. Можно скопировать `.env.example` в `.env` и подставить значение локально.
-
-## Docker
-
-Скопируйте `.env.example` в `.env` и подставьте токен:
+## Docker Compose
 
 ```bash
 cp .env.example .env
-```
-
-Запуск через Docker Compose:
-
-```bash
 docker compose up -d --build
-```
-
-Логи и остановка:
-
-```bash
-docker compose logs -f bot
-docker compose down
-```
-
-Сборка и запуск без Compose:
-
-```bash
-docker build -t tg-bot .
-docker run --rm -e TELEGRAM_BOT_TOKEN="ваш_токен" -p 8080:8080 tg-bot
 ```
 
 ### Timeweb Cloud Apps
 
-`Dockerfile` и `docker-compose.yml` лежат в корне репозитория. В панели Apps:
+1. Деплой из Docker Compose, ветка с этим манифестом.
+2. В переменных приложения задайте `TELEGRAM_BOT_TOKEN` и `DEEPSEEK_API_KEY`.
+3. Хост-порты `80` и `443` не используйте. Health-check слушает `8080`.
 
-1. Тип деплоя — Docker Compose, ветка с этим манифестом.
-2. В переменных приложения задайте `TELEGRAM_BOT_TOKEN` (файл `.env` в git не попадает).
-3. Не указывайте хост-порты `80` и `443` — платформа их резервирует. У сервиса открыт `8080` для health-check.
+## Локальный запуск (Python 3.14 + uv)
+
+```bash
+cp .env.example .env
+uv sync
+uv run telegram-agent-mcp-client --telegram
+```
 
 ## Тесты
 
 ```bash
+python3 -m pip install pytest
 pytest
 ```
