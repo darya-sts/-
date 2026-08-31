@@ -145,10 +145,22 @@ def test_start_command_matches_bot_suffix() -> None:
 def test_start_menu_has_action_buttons() -> None:
     menu = _load_start_menu()
     titles = [title for title, _ in menu.START_BUTTONS]
-    assert titles == ["Обратиться к агенту"]
+    assert titles == ["Задать вопрос", "Обратиться к агенту", "MCP-агент"]
+    assert "DeepSeek" in menu.action_reply("start:ask")
     assert "/writer_agent" in menu.action_reply("start:agent")
+    assert "/mcp" in menu.action_reply("start:mcp")
     assert menu.action_reply("unknown") is None
     assert "Timeweb Cloud: задайте TIMEWEB_TOKEN" not in menu.COMMANDS_HELP
+    assert "Timeweb Cloud: задайте TIMEWEB_TOKEN" not in menu.MCP_MENU
+
+
+def test_telegram_chat_uses_deepseek_swarm() -> None:
+    text = (ROOT / "telegram_agent" / "src" / "bot" / "handlers" / "telegram.py").read_text(
+        encoding="utf-8"
+    )
+    assert "instance.agent.chat" in text
+    assert "set_progress_sink" in text
+    assert "await instance.bot.send(msg, COMMANDS_HELP)" not in text
 
 
 def _load_mcp_routing():
