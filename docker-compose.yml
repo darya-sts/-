@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tg-bot
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_API_MODEL: ${DEEPSEEK_API_MODEL:-deepseek-chat|text+structured}
+      DEEPSEEK_API_BASE: ${DEEPSEEK_API_BASE:-https://api.deepseek.com}
+      LLM_ORDER: ${LLM_ORDER:-deepseek}
+      LLM_ORDER_FAST: ${LLM_ORDER_FAST:-deepseek}
+      SKIP_PLAYWRIGHT: "1"
+      PORT: "8080"
+      CONFIG: /app/config
+      CONFIG_DIR: /app/config
+      DATA_DIR: /app/data
+      ALLOWED_USERS: ${ALLOWED_USERS:-}
+      MCP_SERVER_URL: ${MCP_SERVER_URL:-}
+      MCP_SERVER_COMMAND: ${MCP_SERVER_COMMAND:-}
+      MCP_SERVER_NAME: ${MCP_SERVER_NAME:-env-mcp}
+      MCP_API_KEY: ${MCP_API_KEY:-}
+      TIMEWEB_TOKEN: ${TIMEWEB_TOKEN:-}
+      TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID:-}
+      LANGSMITH_TRACING: "false"
+    init: true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s

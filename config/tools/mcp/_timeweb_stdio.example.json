@@ -1,0 +1,8 @@
+{
+  "description": "Deprecated local stdio server from https://github.com/timeweb-cloud/mcp-server. Copy to timeweb_stdio.json only if you need the old npm tools. Requires Node.js and TIMEWEB_TOKEN.",
+  "command": "npx",
+  "args": ["-y", "timeweb-mcp-server"],
+  "env": {
+    "TIMEWEB_TOKEN": "{ENV:TIMEWEB_TOKEN}"
+  }
+}

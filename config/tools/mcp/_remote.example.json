@@ -1,0 +1,4 @@
+{
+  "description": "Example remote MCP server. Copy to remote.json and set MCP_SERVER_URL. Files starting with _ are ignored by the loader.",
+  "url": "{ENV:MCP_SERVER_URL}"
+}

@@ -1,0 +1,7 @@
+{
+  "description": "Official Timeweb Cloud MCP over HTTP. Requires TIMEWEB_TOKEN. The npm package from timeweb-cloud/mcp-server is deprecated.",
+  "url": "https://api.timeweb.cloud/api/v1/mcp/search",
+  "headers": {
+    "Authorization": "Bearer {ENV:TIMEWEB_TOKEN}"
+  }
+}
