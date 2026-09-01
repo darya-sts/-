@@ -14,15 +14,7 @@ from dotenv import load_dotenv
 from langchain.messages import HumanMessage
 from telebot.types import CallbackQuery, InputFile, InputMediaPhoto, Message
 
-from ...core.llm import LLM, can_listen, can_see
-from ...core.progress import (
-    ProgressTracker,
-    default_max_lines,
-    reset_progress_sink,
-    reset_turn_tracker,
-    set_progress_sink,
-    set_turn_tracker,
-)
+from ...core.llm import LLM, can_listen
 from ...utils import extract_response
 from ..abstract import AgenticBot, handler
 from ...core.mcp_mode import format_mcp_status, run_mcp_query
@@ -43,7 +35,7 @@ from ...core.writer_agent import (
     save_draft,
     set_pending,
 )
-from ..start_menu import action_reply, is_start_command, start_keyboard
+from ..start_menu import COMMANDS_HELP, action_reply, is_start_command, start_keyboard
 from ..utils import str_size, unpack_user
 
 load_dotenv()
@@ -118,20 +110,6 @@ async def _media_to_text(media: list[dict], context: str = "") -> str:
     parts = [{"type": "text", "text": prompt}, *media]
     response = await LLM.get(helper).ainvoke([HumanMessage(content=parts)])
     return extract_response(response)[0].strip()
-
-
-def _make_progress_sink(instance: AgenticBot, reply: Message) -> Any:
-    """Build a progress sink that live-edits the reply message with a progress panel.
-
-    Tools render their own panel (status line, session link, rolling logs)
-    and emit it as one string; this sink replaces the model-text slot below
-    the tool logs, so only actual panel changes trigger an edit.
-    """
-
-    async def sink(line: str) -> None:
-        await instance.bot.edit(reply, line, model_text=True)
-
-    return sink
 
 
 @handler
@@ -445,173 +423,9 @@ async def telegram_chat(
             instance.cancel_events.pop(chat_id, None)
         return
 
-    # Regular messages go to DeepSeek (Friendly Agent).
-    if chat_id in instance.cancel_events:
-        await instance.bot.send(
-            msg, "⏳ I'm still working on your previous message. Send /cancel to abort."
-        )
-        return
-
-    # Claim the slot immediately to prevent concurrent runs in the same chat.
-    # This must happen before any await to avoid a TOCTOU race.
-    cancel_event = Event()
-    instance.cancel_events[chat_id] = cancel_event
-
-    # Consume pending images for this chat
-    pending = instance.pending_media.pop(msg.chat.id, [])
-    if pending:
-        img_paths = [p for _, p in pending]
-        main = LLM.pick()
-        if can_see(main):
-            existing = getattr(msg, "media", [])
-            msg.media = [  # ty: ignore[unresolved-attribute]
-                *existing,
-                *[
-                    {"type": "media", "data": img, "mime_type": "image/jpeg"}
-                    for img, _ in pending
-                ],
-            ]
-            paths_str = "\n".join(f"  - {p}" for p in img_paths)
-            msg.text = (
-                f"{msg.text or ''}\n\n[Received image files:]\n{paths_str}".strip()
-            )
-        else:
-            # Describe each image individually and persist descriptions to disk
-            # so the agent can reference them later even after context loss.
-            desc_parts = []
-            for img_bytes, img_path in pending:
-                media_dicts = [
-                    {"type": "media", "data": img_bytes, "mime_type": "image/jpeg"}
-                ]
-                desc = await _media_to_text(media_dicts, msg.text or "")
-                desc_path = str(
-                    Path(img_path).parent / f"{Path(img_path).stem}_desc.json"
-                )
-                async with aiofiles.open(desc_path, "w", encoding="utf-8") as f:
-                    await f.write(desc)
-                desc_parts.append(
-                    f"  - {img_path}\n    Description: {desc_path}\n    Context: {desc}"
-                )
-            msg.text = (
-                f"{msg.text or ''}\n\n[Received images:]\n" + "\n".join(desc_parts)
-            ).strip()
-
-    if overwrite is None:
-        init = instance.bot.reply if msg.chat.type != "private" else instance.bot.send
-        overwrite = await init(msg)
-    reply = overwrite
-    prev = ""
-    # Long-running tools (e.g. opencode sessions) stream a live progress panel
-    # that is rendered in the model-text slot below the tool logs.
-    # One shared tracker per turn: consecutive tool calls append to the same
-    # panel instead of each starting a fresh one that wipes the previous logs.
-    sink_token = set_progress_sink(_make_progress_sink(instance, reply))
-    turn_tracker = ProgressTracker(max_lines=default_max_lines())
-    tracker_token = set_turn_tracker(turn_tracker)
-    try:
-        async for agent, step, done, extra in instance.agent.chat(msg):
-            if cancel_event.is_set():
-                break
-            if step != prev:
-                prev = step
-                await instance.bot.edit(
-                    reply,
-                    step,
-                    final=done,
-                    agent=agent,
-                    model_text=extra.get("model_text", False),
-                    tool_block=extra.get("tool_block", False),
-                )
-                if not done and not extra.get("model_text") and extra.get("tool_ok"):
-                    tool = extra.get("tool")
-                    if tool and tool in instance.managers:
-                        await instance.managers[tool].notify(
-                            msg.chat.id, extra.get("output")
-                        )
-                elif (
-                    not done
-                    and not extra.get("model_text")
-                    and extra.get("tool_ok") is False
-                ):
-                    await telegram_report_issue(
-                        instance,
-                        msg,
-                        reply,
-                        f"{agent} -> Tool error = {extra.get('tool')}",
-                    )
-            if not done:
-                await sleep(0.1)  # No need to spam
-            elif extra.get("images"):
-                paths = [p for p in extra["images"] if await aiofiles.os.path.exists(p)]
-                if paths:
-                    await instance.bot.core.send_chat_action(
-                        msg.chat.id, "upload_photo"
-                    )
-                    if len(paths) == 1:
-                        async with aiofiles.open(paths[0], "rb") as f:
-                            img_bytes = await f.read()
-                        await instance.bot.core.send_photo(
-                            msg.chat.id,
-                            img_bytes,
-                            show_caption_above_media=True,
-                        )
-                    else:
-                        for i in range(0, len(paths), 10):
-                            batch = paths[i : i + 10]
-                            imgs = await gather(*(_read_image(p) for p in batch))
-                            media = [
-                                InputMediaPhoto(InputFile(BytesIO(b))) for b in imgs
-                            ]
-                            await instance.bot.core.send_media_group(msg.chat.id, media)
-            # TTS: send audio of the final response if enabled
-            if (
-                done
-                and msg.from_user
-                and instance.tts_enabled.get(msg.from_user.id)
-                and LLM.pick("tts")
-            ):
-                instance.log.info(f"[{msg.chat.id}] Generating TTS voice message...")
-                await instance.bot.core.send_chat_action(msg.chat.id, "upload_voice")
-                recording = await instance.bot.send(msg, "🎙️ I'm recording...")
-                adapted = await LLM.tts_adapt(step)
-                audio_bytes = await LLM.tts(adapted)
-                if not audio_bytes:
-                    instance.log.warning(
-                        f"[{msg.chat.id}] TTS generation returned no audio"
-                    )
-                    await instance.bot.send(
-                        msg, "🎙️ TTS failed — check logs for details."
-                    )
-                if audio_bytes:
-                    # Telegram voice messages require OGG/OPUS
-                    proc = await create_subprocess_exec(
-                        "ffmpeg",
-                        "-i",
-                        "pipe:0",
-                        "-c:a",
-                        "libopus",
-                        "-f",
-                        "ogg",
-                        "pipe:1",
-                        stdin=PIPE,
-                        stdout=PIPE,
-                        stderr=DEVNULL,
-                    )
-                    ogg, _ = await proc.communicate(audio_bytes)
-                    voice = ogg if proc.returncode == 0 and ogg else audio_bytes
-                    await instance.bot.core.send_voice(
-                        msg.chat.id, InputFile(BytesIO(voice), file_name="voice.ogg")
-                    )
-                    instance.log.info(f"[{msg.chat.id}] TTS voice message sent")
-                await instance.bot.delete(recording)
-    except Exception as e:
-        print_exc()
-        await telegram_report_issue(instance, msg, reply, e)
-    finally:
-        reset_progress_sink(sink_token)
-        reset_turn_tracker(tracker_token)
-        instance.cancel_events.pop(chat_id, None)
+    await instance.bot.send(msg, COMMANDS_HELP)
     instance.log.sent(msg, timer)
+    return
 
 
 @handler

@@ -171,9 +171,8 @@ class TelegramBot(Bot):
         """Set up message handlers for the bot."""
         await self.core.set_my_commands(
             [
-                BotCommand("start", "Меню"),
+                BotCommand("start", "Меню агентов"),
                 BotCommand("writer_agent", "Пост в канал по статьям"),
-                BotCommand("mcp", "MCP-агент"),
                 BotCommand("cancel", "Отменить"),
             ]
         )
