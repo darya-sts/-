@@ -168,7 +168,10 @@ export class DigestPipelineService {
       const exists = await this.prisma.parsedPost.findFirst({
         where: { contentHash: hash, sourceId: item.sourceId },
       });
-      if (exists) continue;
+      if (exists) {
+        saved.push(exists);
+        continue;
+      }
 
       const category = classifyCategory(item.text, item.category as any);
       const isExpert = isExpertPost(item.text, item.author, EXPERTS);
@@ -196,7 +199,16 @@ export class DigestPipelineService {
       saved.push(post);
     }
 
-    const top = saved.sort((a, b) => b.score - a.score).slice(0, 10);
+    // если новых постов нет — берём свежие из БД (повторный ручной запуск)
+    let pool = saved;
+    if (pool.length === 0) {
+      pool = await this.prisma.parsedPost.findMany({
+        orderBy: { score: "desc" },
+        take: 20,
+      });
+    }
+
+    const top = [...pool].sort((a, b) => b.score - a.score).slice(0, 10);
     const digest = await this.prisma.digest.create({
       data: {
         status: "sent",
