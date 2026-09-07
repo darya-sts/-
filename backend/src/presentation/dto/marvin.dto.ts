@@ -37,3 +37,28 @@ export class AnalyzeTelegramDto {
   @IsOptional()
   channels?: string[];
 }
+
+export class UpdateArticleDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(10)
+  content?: string;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+}
+
+export class InsertMediaDto {
+  @IsOptional()
+  @IsString()
+  emoji?: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  alt?: string;
+}

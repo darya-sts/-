@@ -153,3 +153,26 @@
     radial-gradient(1200px 400px at 0% 0%, color-mix(in oklch, var(--sidebar-primary) 16%, transparent), transparent 60%),
     var(--sidebar);
 }
+
+.marvin-article figure.article-figure,
+.marvin-article figure {
+  margin: 1.25rem 0;
+  padding: 0;
+}
+
+.marvin-article img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: calc(var(--radius) * 0.8);
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--muted) 70%, transparent);
+}
+
+.marvin-article figcaption {
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}

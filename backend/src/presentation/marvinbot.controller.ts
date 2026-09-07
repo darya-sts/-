@@ -4,17 +4,24 @@ import {
   Get,
   Headers,
   Param,
+  Patch,
   Post,
   Put,
   Query,
   Res,
+  UploadedFile,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { memoryStorage } from "multer";
 import type { Response } from "express";
 import { MarvinStudioService } from "../application/marvin-studio.service";
 import {
   AnalyzeTelegramDto,
   ChatEditDto,
   GenerateDto,
+  InsertMediaDto,
+  UpdateArticleDto,
   UpdateSkillsDto,
 } from "./dto/marvin.dto";
 
@@ -63,6 +70,27 @@ export class MarvinBotController {
   @Get("articles/:id")
   getArticle(@Param("id") id: string) {
     return this.studio.getArticle(id);
+  }
+
+  @Patch("articles/:id")
+  updateArticle(@Param("id") id: string, @Body() body: UpdateArticleDto) {
+    return this.studio.updateArticle(id, body);
+  }
+
+  @Post("articles/:id/media")
+  insertMedia(@Param("id") id: string, @Body() body: InsertMediaDto) {
+    return this.studio.insertMedia(id, body);
+  }
+
+  @Post("upload")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  upload(@UploadedFile() file: Express.Multer.File) {
+    return this.studio.saveUpload(file);
   }
 
   @Get("articles/:id/export")

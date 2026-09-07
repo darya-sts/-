@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { GenerateResult } from "../../domain/article/article.types";
 import { buildEditPrompt, buildSystemPrompt, buildUserPrompt } from "../prompts/prompt.builder";
+import { ensureArticleMedia } from "./media.enricher";
 import { runQualityChecklist } from "./quality.checklist";
 
 @Injectable()
@@ -61,11 +62,12 @@ export class MarvinBotClient {
   }
 
   private toResult(text: string, tokens: number): GenerateResult {
-    const html = this.extractHtml(text);
-    const title = this.extractTitle(html) || "Без названия";
+    const rawHtml = this.extractHtml(text);
+    const title = this.extractTitle(rawHtml) || "Без названия";
+    const html = ensureArticleMedia(rawHtml, title);
     const quality = runQualityChecklist(html);
     return {
-      title,
+      title: this.extractTitle(html) || title,
       contentHtml: html,
       tags: this.extractTags(html, title),
       tokenUsed: tokens,
@@ -106,7 +108,7 @@ export class MarvinBotClient {
       body: JSON.stringify({
         model: this.model,
         temperature: 0.4,
-        max_tokens: 1800,
+        max_tokens: 2200,
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
@@ -141,7 +143,7 @@ export class MarvinBotClient {
       body: JSON.stringify({
         model: this.model,
         temperature: 0.4,
-        max_tokens: 1800,
+        max_tokens: 2200,
         stream: true,
         messages: [
           { role: "system", content: system },

@@ -44,6 +44,9 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       MARVINBOT_API_BASE: ${MARVINBOT_API_BASE:-https://api.deepseek.com}
       MARVINBOT_MODEL: ${MARVINBOT_MODEL:-deepseek-chat}
+      MARVIN_UPLOAD_DIR: /data/uploads
+    volumes:
+      - marvin_uploads:/data/uploads
     ports:
       - "3001:3001"
 
@@ -60,3 +63,4 @@ services:
 
 volumes:
   forge_pg:
+  marvin_uploads:

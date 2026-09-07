@@ -48,6 +48,17 @@ export const marvinApi = {
       method: "POST",
       body: JSON.stringify({ articleId, message }),
     }),
+  updateArticle: (id: string, body: { content?: string; title?: string }) =>
+    req<MarvinArticle>(`/articles/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  insertMedia: (id: string, body: { emoji?: string; imageUrl?: string; alt?: string }) =>
+    req<MarvinArticle>(`/articles/${id}/media`, { method: "POST", body: JSON.stringify(body) }),
+  uploadImage: async (file: File) => {
+    const form = new FormData()
+    form.append("file", file)
+    const res = await fetch(`${API_BASE}/upload`, { method: "POST", body: form })
+    if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`)
+    return res.json() as Promise<{ url: string; filename: string }>
+  },
   getSkills: () => req<MarvinSettings>("/skills"),
   putSkills: (body: { skills?: string; rules?: string; telegramSources?: string }) =>
     req<MarvinSettings>("/skills", { method: "PUT", body: JSON.stringify(body) }),

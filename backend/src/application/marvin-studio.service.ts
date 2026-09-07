@@ -3,10 +3,16 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { createWriteStream, existsSync, mkdirSync } from "fs";
+import { join, extname } from "path";
+import { randomUUID } from "crypto";
 import { PrismaService } from "../infrastructure/prisma/prisma.service";
 import { RedisService } from "../infrastructure/redis/redis.service";
 import { MarvinBotClient } from "../infrastructure/marvin/marvinbot.client";
 import { exportDocx, exportPdf } from "../infrastructure/export/export.service";
+import { insertMediaIntoArticle } from "../infrastructure/marvin/media.enricher";
+
+const UPLOAD_DIR = process.env.MARVIN_UPLOAD_DIR || "/data/uploads";
 
 @Injectable()
 export class MarvinStudioService {
@@ -173,6 +179,62 @@ export class MarvinStudioService {
       message: "Анализ каналов запланирован (stub для будущего пайплайна)",
       channels: payload.channels || [],
     };
+  }
+
+  async updateArticle(id: string, input: { content?: string; title?: string }) {
+    await this.getArticle(id);
+    if (!input.content?.trim() && !input.title?.trim()) {
+      throw new BadRequestException("content or title is required");
+    }
+    const updated = await this.prisma.marvinArticle.update({
+      where: { id },
+      data: {
+        ...(input.content?.trim() ? { content: input.content } : {}),
+        ...(input.title?.trim() ? { title: input.title.trim() } : {}),
+      },
+    });
+    await this.audit("update_article", { articleId: id }, 0);
+    return updated;
+  }
+
+  async insertMedia(
+    id: string,
+    input: { emoji?: string; imageUrl?: string; alt?: string },
+  ) {
+    if (!input.emoji?.trim() && !input.imageUrl?.trim()) {
+      throw new BadRequestException("emoji or imageUrl is required");
+    }
+    const article = await this.getArticle(id);
+    const content = insertMediaIntoArticle(article.content, input);
+    const updated = await this.prisma.marvinArticle.update({
+      where: { id },
+      data: { content },
+    });
+    await this.audit("insert_media", { articleId: id, ...input }, 0);
+    return updated;
+  }
+
+  async saveUpload(file: Express.Multer.File): Promise<{ url: string; filename: string }> {
+    if (!file?.buffer?.length && !file?.path) {
+      throw new BadRequestException("file is required");
+    }
+    if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
+    const ext = extname(file.originalname || "").toLowerCase() || ".png";
+    const allowed = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"]);
+    if (!allowed.has(ext)) throw new BadRequestException("unsupported image type");
+    const filename = `${randomUUID()}${ext}`;
+    const target = join(UPLOAD_DIR, filename);
+    if (file.buffer?.length) {
+      await new Promise<void>((resolve, reject) => {
+        const stream = createWriteStream(target);
+        stream.on("finish", () => resolve());
+        stream.on("error", reject);
+        stream.end(file.buffer);
+      });
+    }
+    const url = `/api/marvinbot/uploads/${filename}`;
+    await this.audit("upload_image", { filename, size: file.size }, 0);
+    return { url, filename };
   }
 
   async exportArticle(id: string, format: "pdf" | "docx") {

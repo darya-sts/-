@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,10 +11,21 @@ import { marvinApi, type MarvinArticle, type MarvinSettings } from "@/lib/marvin
 
 type ChatItem = { role: "user" | "assistant"; text: string }
 
+const EMOJI_PRESETS = ["✨", "📌", "✅", "🚀", "💡", "⚠️", "📊", "🔧", "🎯", "📝"]
+
 function statusColor(status: string) {
   if (status === "published") return "default"
   if (status === "archived") return "secondary"
   return "outline"
+}
+
+function ArticleHtml({ html }: { html: string }) {
+  return (
+    <article
+      className="marvin-article prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
 }
 
 export function MarvinBotStudio() {
@@ -31,6 +42,9 @@ export function MarvinBotStudio() {
   const [rulesText, setRulesText] = useState("")
   const [telegramText, setTelegramText] = useState("")
   const [showNew, setShowNew] = useState(false)
+  const [imageUrl, setImageUrl] = useState("")
+  const [imageAlt, setImageAlt] = useState("Иллюстрация")
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     try {
@@ -64,6 +78,11 @@ export function MarvinBotStudio() {
     () => [...articles].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)),
     [articles],
   )
+
+  function applyArticle(article: MarvinArticle) {
+    setSelected(article)
+    setArticles((prev) => prev.map((a) => (a.id === article.id ? article : a)))
+  }
 
   async function onGenerate() {
     if (!query.trim()) return
@@ -100,8 +119,7 @@ export function MarvinBotStudio() {
     setChat((c) => [...c, { role: "user", text: message }])
     try {
       const res = await marvinApi.chat(selectedId, message)
-      setSelected(res.article)
-      setArticles((prev) => prev.map((a) => (a.id === res.article.id ? res.article : a)))
+      applyArticle(res.article)
       setChat((c) => [
         ...c,
         {
@@ -113,6 +131,57 @@ export function MarvinBotStudio() {
       setError(e instanceof Error ? e.message : "Ошибка чата")
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function onInsertEmoji(emoji: string) {
+    if (!selectedId) return
+    setBusy(true)
+    setError(null)
+    try {
+      const article = await marvinApi.insertMedia(selectedId, { emoji })
+      applyArticle(article)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось вставить эмодзи")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onInsertImageUrl() {
+    if (!selectedId || !imageUrl.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      const article = await marvinApi.insertMedia(selectedId, {
+        imageUrl: imageUrl.trim(),
+        alt: imageAlt.trim() || "Иллюстрация",
+      })
+      applyArticle(article)
+      setImageUrl("")
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось вставить изображение")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onUpload(file: File | null) {
+    if (!selectedId || !file) return
+    setBusy(true)
+    setError(null)
+    try {
+      const uploaded = await marvinApi.uploadImage(file)
+      const article = await marvinApi.insertMedia(selectedId, {
+        imageUrl: uploaded.url,
+        alt: imageAlt.trim() || file.name,
+      })
+      applyArticle(article)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка загрузки файла")
+    } finally {
+      setBusy(false)
+      if (fileRef.current) fileRef.current.value = ""
     }
   }
 
@@ -133,12 +202,69 @@ export function MarvinBotStudio() {
     }
   }
 
+  function MediaToolbar() {
+    if (!selectedId) return null
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Медиа в статье</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {EMOJI_PRESETS.map((emoji) => (
+              <Button
+                key={emoji}
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => void onInsertEmoji(emoji)}
+                aria-label={`Вставить ${emoji}`}
+              >
+                {emoji}
+              </Button>
+            ))}
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://… URL изображения"
+            />
+            <Input
+              value={imageAlt}
+              onChange={(e) => setImageAlt(e.target.value)}
+              placeholder="Подпись / alt"
+              className="sm:max-w-48"
+            />
+            <Button disabled={busy || !imageUrl.trim()} onClick={() => void onInsertImageUrl()}>
+              Вставить URL
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={(e) => void onUpload(e.target.files?.[0] || null)}
+            />
+            <Button variant="outline" disabled={busy} onClick={() => fileRef.current?.click()}>
+              Загрузить изображение
+            </Button>
+            <p className="text-xs text-muted-foreground">PNG/JPEG/WebP/GIF/SVG до 5 МБ</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8 sm:py-12">
       <PageHeader
         kicker="MarvinBot Studio"
         title="Студия статей с MarvinBot"
-        description="Генерация HTML-статей, правка блоков через чат, скиллы/правила и экспорт в PDF/Word. Без авторизации, rate limit 10 запросов/мин."
+        description="Генерация HTML-статей с эмодзи и изображениями, правка блоков через чат, скиллы/правила и экспорт в PDF/Word."
       />
 
       {error ? (
@@ -206,35 +332,35 @@ export function MarvinBotStudio() {
           </div>
 
           {selected ? (
-            <Card>
-              <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
-                <CardTitle>{selected.title}</CardTitle>
-                <div className="flex gap-2">
-                  <a
-                    className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] hover:bg-muted"
-                    href={marvinApi.exportUrl(selected.id, "pdf")}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    PDF
-                  </a>
-                  <a
-                    className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] hover:bg-muted"
-                    href={marvinApi.exportUrl(selected.id, "docx")}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Word
-                  </a>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <article
-                  className="prose prose-invert max-w-none text-sm leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: selected.content }}
-                />
-              </CardContent>
-            </Card>
+            <>
+              <MediaToolbar />
+              <Card>
+                <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+                  <CardTitle>{selected.title}</CardTitle>
+                  <div className="flex gap-2">
+                    <a
+                      className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] hover:bg-muted"
+                      href={marvinApi.exportUrl(selected.id, "pdf")}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      PDF
+                    </a>
+                    <a
+                      className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] hover:bg-muted"
+                      href={marvinApi.exportUrl(selected.id, "docx")}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Word
+                    </a>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ArticleHtml html={selected.content} />
+                </CardContent>
+              </Card>
+            </>
           ) : null}
         </TabsContent>
 
@@ -243,12 +369,13 @@ export function MarvinBotStudio() {
             <p className="text-sm text-muted-foreground">Сначала выберите или создайте статью.</p>
           ) : (
             <>
+              <MediaToolbar />
               <Card>
                 <CardContent className="space-y-3 py-4">
                   <div className="max-h-80 space-y-2 overflow-y-auto">
                     {chat.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
-                        Напишите, какой блок править: например «Усиль введение цифрами».
+                        Напишите, какой блок править: например «Добавь эмодзи в чеклист и картинку во введение».
                       </p>
                     ) : (
                       chat.map((m, i) => (
@@ -282,10 +409,7 @@ export function MarvinBotStudio() {
               {selected ? (
                 <Card>
                   <CardContent className="py-4">
-                    <article
-                      className="prose prose-invert max-w-none text-sm"
-                      dangerouslySetInnerHTML={{ __html: selected.content }}
-                    />
+                    <ArticleHtml html={selected.content} />
                   </CardContent>
                 </Card>
               ) : null}
