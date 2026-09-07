@@ -37,6 +37,9 @@ export default function HomePage() {
               <Button variant="outline" render={<Link href="/tools" />}>
                 Каталог инструментов
               </Button>
+              <Button variant="outline" render={<Link href="/marvinbot" />}>
+                MarvinBot Studio
+              </Button>
             </div>
           </div>
           <Card className="bg-card/80">

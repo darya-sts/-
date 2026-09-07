@@ -40,10 +40,18 @@ npm start
 
 Timeweb App Platform для этого репозитория — **frontend Next.js**: сборка `npm run build`, индексная директория `/out`. Без `output: "export"` каталог `out/` не появляется, и площадка отдаёт 404.
 
-## Деплой в Timeweb Cloud
+## Деплой (VPS Amsterdam)
 
-Приложение **Media Factory**: https://darya-sts--d6dc.twc1.net  
-Репозиторий GitHub `darya-sts/-`, ветка `cursor/media-factory-3d2b`, автодеплой. Открывайте технический домен по HTTPS, не `http://127.0.0.1:43147`.
+Прод: **https://app1.neurosolutions.pro/**  
+Путь на сервере: `/opt/my_services/forge-mill-src` · Docker Compose (`forge-mill` + `marvinbot-api`).
+
+```bash
+cd /opt/my_services/forge-mill-src
+docker compose up -d --build
+```
+
+MarvinBot Studio: https://app1.neurosolutions.pro/marvinbot/  
+API: https://app1.neurosolutions.pro/api/marvinbot/
 
 ## Что внутри
 
@@ -57,6 +65,7 @@ Timeweb App Platform для этого репозитория — **frontend Nex
 | Правила 2026 | YouTube, X, Telegram с порогами |
 | Cursor + MCP | `mcp.json`, правило канала, список серверов |
 | Конвейер | SOP: один лонг → Shorts / тред / пост TG |
+| MarvinBot Studio | Дайджесты Telegram, источники, генерация статей, чат, экспорт |
 
 ## Рекомендованный lean-стек (≈ $53/мес сверх Cursor)
 
