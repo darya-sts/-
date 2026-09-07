@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model MarvinArticle {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  query     String
+  tags      String[]
+  status    String   @default("draft")
+  tokenUsed Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MarvinSettings {
+  id              String   @id @default(cuid())
+  skills          String   @db.Text
+  rules           String   @db.Text
+  telegramSources String   @db.Text
+  updatedAt       DateTime @updatedAt
+}
+
+model MarvinAuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  detail    String   @db.Text
+  tokens    Int      @default(0)
+  createdAt DateTime @default(now())
+}

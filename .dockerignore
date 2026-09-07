@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.cursor
+agent-tools
+backend/node_modules
+backend/dist
+media-factory.zip
+*.zip
+*.tsbuildinfo
+next-env.d.ts
+README.md
+AGENTS.md
+CLAUDE.md
