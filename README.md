@@ -30,7 +30,7 @@ VPS в Timeweb Cloud (Amsterdam) для приложений за Nginx + Docker
 Секреты: `/opt/my_services/content-tg-bot/.env` (не в git).  
 Канал публикации: `@neurosolutionspro`.
 
-Старое Timeweb Apps `TG_Bot_active` поставлено на паузу (тот же bot token нельзя крутить в двух местах).
+Старое Timeweb Apps `TG_Bot_active` удалено (конфликтовало по Telegram getUpdates / 409).
 
 ## Управление
 
