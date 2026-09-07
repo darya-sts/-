@@ -1,9 +1,10 @@
 node_modules
 .next
-/out
 .git
 .cursor
 agent-tools
+backend/node_modules
+backend/dist
 media-factory.zip
 *.zip
 *.tsbuildinfo

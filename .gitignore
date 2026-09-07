@@ -44,3 +44,8 @@ next-env.d.ts
 /agent-tools/
 *.zip
 media-factory.zip
+backend/node_modules
+backend/dist
+.env
+out
+.next

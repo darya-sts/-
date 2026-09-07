@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: forge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_PASSWORD: forge
+      POSTGRES_DB: forge_mill
+    volumes:
+      - forge_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forge -d forge_mill"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: forge-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  marvinbot-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: marvinbot-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: "3001"
+      DATABASE_URL: postgresql://forge:forge@postgres:5432/forge_mill?schema=public
+      REDIS_URL: redis://redis:6379
+      MARVINBOT_API_KEY: ${MARVINBOT_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      MARVINBOT_API_BASE: ${MARVINBOT_API_BASE:-https://api.deepseek.com}
+      MARVINBOT_MODEL: ${MARVINBOT_MODEL:-deepseek-chat}
+    ports:
+      - "3001:3001"
+
+  forge-mill:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: forge-mill
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    depends_on:
+      - marvinbot-api
+
+volumes:
+  forge_pg:
