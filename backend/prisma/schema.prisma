@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Источник — Telegram-канал
+model TelegramSource {
+  id         String       @id @default(cuid())
+  username   String       @unique
+  title      String
+  /// Инструменты ИИ | Скилы и правила для Агентов | Монетизация с помощью ИИ | Прочее
+  category   String
+  /// Авторитет канала 1–5
+  weight     Int          @default(1)
+  isActive   Boolean      @default(true)
+  lastParsed DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  posts      ParsedPost[]
+}
+
+/// Распарсенный пост из канала
+model ParsedPost {
+  id          String       @id @default(cuid())
+  sourceId    String
+  source      TelegramSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  text        String       @db.Text
+  summary     String?      @db.Text
+  author      String?
+  publishedAt DateTime
+  views       Int?
+  forwards    Int?
+  reactions   Int?
+  /// Релевантность 0–100
+  score       Int          @default(0)
+  category    String
+  isExpert    Boolean      @default(false)
+  isProcessed Boolean      @default(false)
+  /// Хэш текста для дедупликации
+  contentHash String?
+  createdAt   DateTime     @default(now())
+  digestItems DigestItem[]
+
+  @@index([publishedAt])
+  @@index([score])
+  @@index([contentHash])
+}
+
+/// Дайджест (сводка) за цикл сбора
+model Digest {
+  id        String       @id @default(cuid())
+  date      DateTime     @default(now())
+  /// draft | sent | approved | rejected | generated
+  status    String       @default("draft")
+  messageId String?
+  reminderSentAt DateTime?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  items     DigestItem[]
+  article   Article?
+}
+
+/// Элемент дайджеста (пост + выбор пользователя)
+model DigestItem {
+  id       String     @id @default(cuid())
+  digestId String
+  digest   Digest     @relation(fields: [digestId], references: [id], onDelete: Cascade)
+  postId   String
+  post     ParsedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  selected Boolean    @default(false)
+  order    Int
+
+  @@unique([digestId, postId])
+}
+
+/// Сгенерированная статья
+model Article {
+  id          String    @id @default(cuid())
+  title       String
+  content     String    @db.Text
+  digestId    String    @unique
+  digest      Digest    @relation(fields: [digestId], references: [id], onDelete: Cascade)
+  tokensUsed  Int       @default(0)
+  /// draft | published | archived
+  status      String    @default("draft")
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+/// Настройки единственного пользователя (Forge Mill)
+model UserSettings {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  keywords       String?  @db.Text
+  categories     String?  @db.Text
+  telegramChatId String?
+  scheduleCron   String   @default("0 6,18 * * *")
+  timezone       String   @default("Asia/Novosibirsk")
+  maxPostsPerDigest  Int  @default(10)
+  maxPostsPerArticle Int  @default(5)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+/// Эксперт для метки #expert
+model Expert {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  source    String   @default("Telegram")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+/// Учёт токенов MarvinBot
+model TokenUsage {
+  id        String   @id @default(cuid())
+  operation String
+  tokens    Int
+  model     String?
+  meta      String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Аудит действий
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String?
+  entityId  String?
+  details   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
