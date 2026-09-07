@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DigestStudioPanel } from "@/components/marvinbot/digest-studio-panel"
 import { marvinApi, type MarvinArticle, type MarvinSettings } from "@/lib/marvin-api"
 
 type ChatItem = { role: "user" | "assistant"; text: string }
@@ -264,7 +265,7 @@ export function MarvinBotStudio() {
       <PageHeader
         kicker="MarvinBot Studio"
         title="Студия статей с MarvinBot"
-        description="Генерация HTML-статей с эмодзи и изображениями, правка блоков через чат, скиллы/правила и экспорт в PDF/Word."
+        description="Дайджесты Telegram (06:00/18:00 Новосибирск), генерация статей, эмодзи/изображения, чат-правка и экспорт PDF/Word."
       />
 
       {error ? (
@@ -273,12 +274,24 @@ export function MarvinBotStudio() {
         </Card>
       ) : null}
 
-      <Tabs defaultValue="dashboard">
+      <Tabs defaultValue="digests">
         <TabsList>
+          <TabsTrigger value="digests">Дайджесты</TabsTrigger>
           <TabsTrigger value="dashboard">Статьи</TabsTrigger>
           <TabsTrigger value="chat">Чат</TabsTrigger>
           <TabsTrigger value="settings">Настройки</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="digests" className="mt-6">
+          <DigestStudioPanel
+            onError={setError}
+            onArticleCreated={(article) => {
+              setArticles((prev) => [article, ...prev])
+              setSelectedId(article.id)
+              setSelected(article)
+            }}
+          />
+        </TabsContent>
 
         <TabsContent value="dashboard" className="mt-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">

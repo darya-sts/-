@@ -18,6 +18,46 @@ export type MarvinSettings = {
   updatedAt: string
 }
 
+export type TelegramSource = {
+  id: string
+  username: string
+  title: string
+  category: string
+  weight: number
+  isActive: boolean
+  lastParsed: string | null
+}
+
+export type DigestItem = {
+  id: string
+  selected: boolean
+  order: number
+  post: {
+    id: string
+    summary: string | null
+    text: string
+    category: string
+    score: number
+    isExpert: boolean
+    source: { username: string }
+  }
+}
+
+export type Digest = {
+  id: string
+  date: string
+  status: string
+  articleId?: string | null
+  items: DigestItem[]
+}
+
+export type DashboardStats = {
+  articlesWeek: number
+  sourcesActive: number
+  digestsTotal: number
+  tokensWeek: number
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_MARVIN_API_BASE || "/api/marvinbot"
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -69,4 +109,18 @@ export const marvinApi = {
     }),
   exportUrl: (id: string, format: "pdf" | "docx") =>
     `${API_BASE}/articles/${id}/export?format=${format}`,
+
+  dashboard: () => req<DashboardStats>("/stats/dashboard"),
+  listSources: () => req<TelegramSource[]>("/sources"),
+  createSource: (body: { username: string; title?: string; category: string; weight?: number }) =>
+    req<TelegramSource>("/sources", { method: "POST", body: JSON.stringify(body) }),
+  updateSource: (id: string, body: Partial<{ isActive: boolean; weight: number; title: string }>) =>
+    req<TelegramSource>(`/sources/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteSource: (id: string) => req<{ ok: boolean }>(`/sources/${id}`, { method: "DELETE" }),
+  listDigests: () => req<Digest[]>("/digests"),
+  getDigest: (id: string) => req<Digest>(`/digests/${id}`),
+  generateDigest: () => req<Digest>("/digests/generate", { method: "POST" }),
+  selectDigestItems: (id: string, itemIds: string[]) =>
+    req<Digest>(`/digests/${id}/select`, { method: "POST", body: JSON.stringify({ itemIds }) }),
+  approveDigest: (id: string) => req<MarvinArticle>(`/digests/${id}/approve`, { method: "POST" }),
 }

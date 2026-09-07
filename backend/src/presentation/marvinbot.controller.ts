@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Param,
@@ -16,6 +17,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
 import type { Response } from "express";
 import { MarvinStudioService } from "../application/marvin-studio.service";
+import { DigestPipelineService } from "../application/digest-pipeline.service";
 import {
   AnalyzeTelegramDto,
   ChatEditDto,
@@ -27,7 +29,65 @@ import {
 
 @Controller("api/marvinbot")
 export class MarvinBotController {
-  constructor(private readonly studio: MarvinStudioService) {}
+  constructor(
+    private readonly studio: MarvinStudioService,
+    private readonly digests: DigestPipelineService,
+  ) {}
+
+  @Get("stats/dashboard")
+  dashboardStats() {
+    return this.digests.stats();
+  }
+
+  @Get("sources")
+  listSources() {
+    return this.digests.listSources();
+  }
+
+  @Post("sources")
+  createSource(
+    @Body() body: { username: string; title?: string; category: string; weight?: number },
+  ) {
+    return this.digests.createSource(body);
+  }
+
+  @Put("sources/:id")
+  updateSource(
+    @Param("id") id: string,
+    @Body() body: Partial<{ title: string; category: string; weight: number; isActive: boolean }>,
+  ) {
+    return this.digests.updateSource(id, body);
+  }
+
+  @Delete("sources/:id")
+  removeSource(@Param("id") id: string) {
+    return this.digests.removeSource(id);
+  }
+
+  @Get("digests")
+  listDigests() {
+    return this.digests.listDigests();
+  }
+
+  @Post("digests/generate")
+  generateDigest() {
+    return this.digests.runDigestCycle();
+  }
+
+  @Get("digests/:id")
+  getDigest(@Param("id") id: string) {
+    return this.digests.getDigest(id);
+  }
+
+  @Post("digests/:id/select")
+  selectDigestItems(@Param("id") id: string, @Body() body: { itemIds: string[] }) {
+    return this.digests.selectItems(id, body.itemIds || []);
+  }
+
+  @Post("digests/:id/approve")
+  approveDigest(@Param("id") id: string) {
+    return this.digests.approveAndGenerate(id);
+  }
 
   @Post("generate")
   generate(
