@@ -1,0 +1,11 @@
+'use client';
+
+import ReactMarkdown from 'react-markdown';
+
+export function ArticleViewer({ content }: { content: string }) {
+  return (
+    <div className="markdown">
+      <ReactMarkdown>{content}</ReactMarkdown>
+    </div>
+  );
+}
