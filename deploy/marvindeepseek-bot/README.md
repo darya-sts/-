@@ -28,3 +28,14 @@ curl -s http://127.0.0.1:8082/health
 ```
 
 Команды в Telegram: `/start`, `/clear`.
+
+## Memory MCP
+
+Бот подключается к `memory-mcp` по Docker-сети `agent-shared`.
+
+Env:
+- `MEMORY_MCP_ENABLED=1`
+- `MEMORY_MCP_URL=http://memory-mcp:3000/mcp`
+- `MCP_AUTH_TOKEN=<token from memory-mcp .env>`
+
+Команды Telegram: `/memory`, `/remember <факт>`.
