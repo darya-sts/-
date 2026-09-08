@@ -24,6 +24,10 @@ logging.basicConfig(
     level=logging.INFO,
 )
 log = logging.getLogger("marvindeepseek")
+# Avoid leaking bot token in httpx / telegram request URLs
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("telegram.ext.ExtBot").setLevel(logging.WARNING)
 
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"].strip()
 DEEPSEEK_API_KEY = os.environ["DEEPSEEK_API_KEY"].strip()
