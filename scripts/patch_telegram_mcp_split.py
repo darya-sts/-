@@ -62,38 +62,42 @@ def patch_worker_send(path: pathlib.Path) -> bool:
         r"async function send\(text\) \{.*?return undefined;\n        \}\n    \}",
         re.S,
     )
-    replacement = '''async function send(text) {
-        const plain = toPlainTelegram(text);
-        /* MARVIN_TG_SPLIT_PATCH_BEGIN */
-        // Reserve space for "(i/N)\\n" so chunks never hit HARD_CLAMP truncation.
-        const prefixBudget = 16;
-        const chunkLimit = Math.min(3500, HARD_CLAMP - prefixBudget);
-        const chunks = splitMessage(plain, chunkLimit);
-        /* MARVIN_TG_SPLIT_PATCH_END */
-        let firstId;
-        try {
-            for (let i = 0; i < chunks.length; i++) {
-                let chunk = chunks[i];
-                if (chunks.length > 1) {
-                    chunk = `(${i + 1}/${chunks.length})\\n${chunk}`;
-                }
-                if (chunk.length > HARD_CLAMP) {
-                    chunk = chunk.slice(0, HARD_CLAMP - 20) + "\\n\\n[...truncated]";
-                }
-                if (i > 0)
-                    await waitSendGap();
-                const id = await client.sendText(config.chatId, chunk);
-                lastSendAt = Date.now();
-                if (i === 0)
-                    firstId = id;
-            }
-            return firstId;
-        }
-        catch (err) {
-            log(`Failed to send Telegram message: ${String(err)}`);
-            return undefined;
-        }
-    }'''
+    # Build JS with explicit \n escapes (avoid Python interpreting them away).
+    nl = "\\" + "n"
+    replacement = (
+        "async function send(text) {\n"
+        "        const plain = toPlainTelegram(text);\n"
+        f"        {MARK_BEGIN}\n"
+        f"        // Reserve space for (i/N){nl} prefix so chunks stay under HARD_CLAMP.\n"
+        "        const prefixBudget = 16;\n"
+        "        const chunkLimit = Math.min(3500, HARD_CLAMP - prefixBudget);\n"
+        "        const chunks = splitMessage(plain, chunkLimit);\n"
+        f"        {MARK_END}\n"
+        "        let firstId;\n"
+        "        try {\n"
+        "            for (let i = 0; i < chunks.length; i++) {\n"
+        "                let chunk = chunks[i];\n"
+        "                if (chunks.length > 1) {\n"
+        f"                    chunk = `(${{i + 1}}/${{chunks.length}}){nl}${{chunk}}`;\n"
+        "                }\n"
+        "                if (chunk.length > HARD_CLAMP) {\n"
+        f'                    chunk = chunk.slice(0, HARD_CLAMP - 20) + "{nl}{nl}[...truncated]";\n'
+        "                }\n"
+        "                if (i > 0)\n"
+        "                    await waitSendGap();\n"
+        "                const id = await client.sendText(config.chatId, chunk);\n"
+        "                lastSendAt = Date.now();\n"
+        "                if (i === 0)\n"
+        "                    firstId = id;\n"
+        "            }\n"
+        "            return firstId;\n"
+        "        }\n"
+        "        catch (err) {\n"
+        "            log(`Failed to send Telegram message: ${String(err)}`);\n"
+        "            return undefined;\n"
+        "        }\n"
+        "    }"
+    )
     new, n = pattern.subn(replacement, text, count=1)
     if n != 1:
         raise RuntimeError(f"Could not patch send() in {path}")
