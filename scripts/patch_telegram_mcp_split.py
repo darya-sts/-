@@ -63,7 +63,7 @@ def patch_worker_send(path: pathlib.Path) -> bool:
         re.S,
     )
     # Build JS with explicit \n escapes (avoid Python interpreting them away).
-    nl = "\\" + "n"
+    nl = chr(92) + "n"  # backslash-n for JS source
     replacement = (
         "async function send(text) {\n"
         "        const plain = toPlainTelegram(text);\n"
@@ -98,7 +98,8 @@ def patch_worker_send(path: pathlib.Path) -> bool:
         "        }\n"
         "    }"
     )
-    new, n = pattern.subn(replacement, text, count=1)
+    # Use a callable repl so re.sub does not reinterpret \n as newlines.
+    new, n = pattern.subn(lambda _m: replacement, text, count=1)
     if n != 1:
         raise RuntimeError(f"Could not patch send() in {path}")
     path.write_text(new, encoding="utf-8")
