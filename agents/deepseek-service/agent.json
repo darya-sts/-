@@ -1,0 +1,11 @@
+{
+  "name": "DeepSeek",
+  "type": "service",
+  "description": "LLM API deepseek-chat / deepseek-v4-flash.",
+  "skills": ["chat-completions"],
+  "github": "https://platform.deepseek.com",
+  "server": {
+    "host": "api.deepseek.com",
+    "type": "serverless"
+  }
+}
