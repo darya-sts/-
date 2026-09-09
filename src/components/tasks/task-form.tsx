@@ -3,13 +3,10 @@
 import { useState, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { TASK_PRIORITIES, TASK_STATUSES, type Task, type TaskPriority, type TaskStatus } from "@/lib/tasks/types"
-import { newId } from "@/lib/tasks/storage"
-
-const fieldClass =
-  "h-8 w-full rounded-lg border border-input bg-white px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-const textareaClass =
-  "min-h-24 w-full rounded-lg border border-input bg-white px-2.5 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+import { FIELD_CLASS, TEXTAREA_CLASS } from "@/components/tasks/field-styles"
+import { PROJECT_BOTS } from "@/lib/tasks/bots"
+import { newId } from "@/lib/tasks/id"
+import { TASK_PRIORITIES, TASK_STATUSES, type Task, type TaskCategory, type TaskPriority, type TaskStatus } from "@/lib/tasks/types"
 
 export type TaskFormValues = {
   title: string
@@ -19,15 +16,19 @@ export type TaskFormValues = {
   deadline?: number
   checklistTexts: string[]
   apiKeyName?: string
+  categoryId: string | null
+  executorBotId?: string
 }
 
 export function TaskForm({
   initial,
+  categories,
   submitLabel,
   onCancel,
   onSubmit,
 }: {
   initial?: Task | null
+  categories: TaskCategory[]
   submitLabel: string
   onCancel: () => void
   onSubmit: (values: TaskFormValues) => void
@@ -38,6 +39,11 @@ export function TaskForm({
   const [priority, setPriority] = useState<TaskPriority>(initial?.priority ?? "medium")
   const [deadline, setDeadline] = useState(toDateInput(initial?.deadline))
   const [apiKeyName, setApiKeyName] = useState(initial?.botConfig?.apiKeyName ?? "")
+  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "")
+  const [executorBotId, setExecutorBotId] = useState(initial?.executorBotId ?? "task-bot")
+  const [customBot, setCustomBot] = useState(
+    initial?.executorBotId?.startsWith("custom:") ? initial.executorBotId.slice(7) : ""
+  )
   const [checklistText, setChecklistText] = useState(
     (initial?.checklist ?? []).map((item) => item.text).join("\n")
   )
@@ -53,6 +59,8 @@ export function TaskForm({
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean)
+    const botId =
+      executorBotId === "custom" ? (customBot.trim() ? `custom:${customBot.trim()}` : undefined) : executorBotId || undefined
     onSubmit({
       title: title.trim(),
       description: description.trim(),
@@ -61,6 +69,8 @@ export function TaskForm({
       deadline: fromDateInput(deadline),
       checklistTexts,
       apiKeyName: apiKeyName.trim() || undefined,
+      categoryId: categoryId || null,
+      executorBotId: botId,
     })
   }
 
@@ -73,7 +83,7 @@ export function TaskForm({
       <label className="grid gap-1">
         <span className="text-xs font-medium text-muted-foreground">Описание</span>
         <textarea
-          className={textareaClass}
+          className={TEXTAREA_CLASS}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           placeholder="Контекст, критерии готовности"
@@ -82,7 +92,7 @@ export function TaskForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-1">
           <span className="text-xs font-medium text-muted-foreground">Статус</span>
-          <select className={fieldClass} value={status} onChange={(event) => setStatus(event.target.value as TaskStatus)}>
+          <select className={`${FIELD_CLASS} w-full`} value={status} onChange={(event) => setStatus(event.target.value as TaskStatus)}>
             {TASK_STATUSES.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.label}
@@ -93,7 +103,7 @@ export function TaskForm({
         <label className="grid gap-1">
           <span className="text-xs font-medium text-muted-foreground">Приоритет</span>
           <select
-            className={fieldClass}
+            className={`${FIELD_CLASS} w-full`}
             value={priority}
             onChange={(event) => setPriority(event.target.value as TaskPriority)}
           >
@@ -105,6 +115,43 @@ export function TaskForm({
           </select>
         </label>
       </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="grid gap-1">
+          <span className="text-xs font-medium text-muted-foreground">Категория (направление)</span>
+          <select
+            className={`${FIELD_CLASS} w-full`}
+            value={categoryId}
+            aria-label="Категория задачи"
+            onChange={(event) => setCategoryId(event.target.value)}
+          >
+            <option value="">Без категории</option>
+            {categories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1">
+          <span className="text-xs font-medium text-muted-foreground">Бот-исполнитель</span>
+          <select
+            className={`${FIELD_CLASS} w-full`}
+            value={executorBotId.startsWith("custom:") ? "custom" : executorBotId}
+            aria-label="Бот-исполнитель"
+            onChange={(event) => setExecutorBotId(event.target.value)}
+          >
+            {PROJECT_BOTS.map((bot) => (
+              <option key={bot.id} value={bot.id}>
+                {bot.name}
+              </option>
+            ))}
+            <option value="custom">Другой (вручную)</option>
+          </select>
+        </label>
+      </div>
+      {executorBotId === "custom" || executorBotId.startsWith("custom:") ? (
+        <Input value={customBot} placeholder="Имя бота" onChange={(event) => setCustomBot(event.target.value)} />
+      ) : null}
       <label className="grid gap-1">
         <span className="text-xs font-medium text-muted-foreground">Дедлайн</span>
         <Input type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} />
@@ -120,7 +167,7 @@ export function TaskForm({
       <label className="grid gap-1">
         <span className="text-xs font-medium text-muted-foreground">Чек-лист (по одному пункту на строку)</span>
         <textarea
-          className={textareaClass}
+          className={TEXTAREA_CLASS}
           value={checklistText}
           onChange={(event) => setChecklistText(event.target.value)}
           placeholder={"Дизайн макета\nВерстка\nАнимации"}

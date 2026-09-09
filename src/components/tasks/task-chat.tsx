@@ -5,7 +5,7 @@ import { Bot, Send, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { connectBotChat, taskBot } from "@/lib/tasks/bot"
-import { newId } from "@/lib/tasks/storage"
+import { newId } from "@/lib/tasks/id"
 import type { ChatMessage, Task } from "@/lib/tasks/types"
 import { cn } from "@/lib/utils"
 

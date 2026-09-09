@@ -1,10 +1,15 @@
 import {
   STORAGE_KEYS,
   type Task,
+  type TaskBoard,
   type TaskPriority,
   type TaskSortBy,
   type TaskStatus,
+  type TaskViewMode,
 } from "./types"
+import { newId } from "./id"
+
+export { newId } from "./id"
 
 const PRIORITY_RANK: Record<TaskPriority, number> = {
   urgent: 0,
@@ -23,11 +28,6 @@ const STATUS_RANK: Record<TaskStatus, number> = {
   cancelled: 6,
 }
 
-export function newId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID()
-  return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`
-}
-
 export const DEMO_TASKS: Task[] = [
   {
     id: "demo-landing",
@@ -37,6 +37,9 @@ export const DEMO_TASKS: Task[] = [
     priority: "high",
     createdAt: Date.now() - 86_400_000,
     updatedAt: Date.now() - 3_600_000,
+    categoryId: "cat-design",
+    executorBotId: "cursor-agent",
+    attachments: [],
     checklist: [
       { id: "1a", text: "Дизайн макета", completed: true, completedAt: Date.now() - 40_000_000, completedBy: "user" },
       { id: "1b", text: "Верстка", completed: false },
@@ -54,6 +57,9 @@ export const DEMO_TASKS: Task[] = [
     createdAt: Date.now() - 172_800_000,
     updatedAt: Date.now() - 86_400_000,
     deadline: Date.UTC(2027, 1, 1),
+    categoryId: "cat-mkt",
+    executorBotId: "marvinbot",
+    attachments: [],
     checklist: [
       { id: "2a", text: "Ниша EN зафиксирована", completed: true, completedBy: "user" },
       { id: "2b", text: "Стек MCP в Cursor", completed: true, completedBy: "user" },
@@ -64,6 +70,26 @@ export const DEMO_TASKS: Task[] = [
   },
 ]
 
+function migrateTask(task: Task): Task {
+  if (task.id === "demo-landing") {
+    return {
+      ...task,
+      categoryId: task.categoryId ?? "cat-design",
+      executorBotId: task.executorBotId ?? "cursor-agent",
+      attachments: task.attachments ?? [],
+    }
+  }
+  if (task.id === "demo-ypp") {
+    return {
+      ...task,
+      categoryId: task.categoryId ?? "cat-mkt",
+      executorBotId: task.executorBotId ?? "marvinbot",
+      attachments: task.attachments ?? [],
+    }
+  }
+  return { ...task, attachments: task.attachments ?? [] }
+}
+
 function isTask(value: unknown): value is Task {
   if (!value || typeof value !== "object") return false
   const task = value as Task
@@ -73,11 +99,15 @@ function isTask(value: unknown): value is Task {
 export type TaskUiSettings = {
   filterStatus: TaskStatus | "all"
   sortBy: TaskSortBy
+  viewMode: TaskViewMode
+  boardId: string
 }
 
 const DEFAULT_SETTINGS: TaskUiSettings = {
   filterStatus: "all",
   sortBy: "created",
+  viewMode: "list",
+  boardId: "board-all",
 }
 
 export function loadTaskSettings(): TaskUiSettings {
@@ -93,6 +123,8 @@ export function loadTaskSettings(): TaskUiSettings {
     return {
       filterStatus: statusOk ? filterStatus : "all",
       sortBy: sortOk ? sortBy : "created",
+      viewMode: parsed.viewMode === "kanban" ? "kanban" : "list",
+      boardId: typeof parsed.boardId === "string" && parsed.boardId ? parsed.boardId : "board-all",
     }
   } catch {
     return DEFAULT_SETTINGS
@@ -101,6 +133,24 @@ export function loadTaskSettings(): TaskUiSettings {
 
 export function saveTaskSettings(settings: TaskUiSettings): void {
   window.localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings))
+}
+
+export function readViewFromUrl(): Partial<Pick<TaskUiSettings, "viewMode" | "boardId">> {
+  if (typeof window === "undefined") return {}
+  const params = new URLSearchParams(window.location.search)
+  const view = params.get("view")
+  const board = params.get("board")
+  return {
+    viewMode: view === "kanban" || view === "list" ? view : undefined,
+    boardId: board || undefined,
+  }
+}
+
+export function writeViewToUrl(viewMode: TaskViewMode, boardId: string) {
+  const url = new URL(window.location.href)
+  url.searchParams.set("view", viewMode)
+  url.searchParams.set("board", boardId)
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`)
 }
 
 export function sortAndFilter(
@@ -130,6 +180,12 @@ export function sortAndFilter(
   })
 }
 
+export function filterByBoard(tasks: Task[], board: TaskBoard | undefined): Task[] {
+  if (!board || board.categoryId === null) return tasks
+  if (board.categoryId === "none") return tasks.filter((task) => !task.categoryId)
+  return tasks.filter((task) => task.categoryId === board.categoryId)
+}
+
 export function checklistStats(items: { completed: boolean }[]) {
   const total = items.length
   const done = items.filter((item) => item.completed).length
@@ -144,7 +200,7 @@ export class TaskStorage {
     try {
       const parsed: unknown = JSON.parse(raw)
       if (!Array.isArray(parsed)) return []
-      return parsed.filter(isTask)
+      return parsed.filter(isTask).map(migrateTask)
     } catch {
       return []
     }
@@ -179,6 +235,10 @@ export class TaskStorage {
       checklist: input.checklist ?? [],
       chat: input.chat,
       botConfig: input.botConfig,
+      categoryId: input.categoryId ?? null,
+      executorBotId: input.executorBotId,
+      attachments: input.attachments ?? [],
+      result: input.result,
     }
     const tasks = this.load()
     tasks.unshift(task)

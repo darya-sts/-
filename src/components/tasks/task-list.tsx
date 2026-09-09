@@ -1,8 +1,11 @@
 import { TaskCard } from "@/components/tasks/task-card"
-import type { Task, TaskSortBy, TaskStatus } from "@/lib/tasks/types"
+import { botLabel } from "@/lib/tasks/bots"
+import { categoryName } from "@/lib/tasks/catalog"
+import type { Task, TaskCategory, TaskSortBy, TaskStatus } from "@/lib/tasks/types"
 
 export interface TaskListProps {
   tasks: Task[]
+  categories: TaskCategory[]
   selectedTaskId?: string
   onSelectTask: (task: Task) => void
   filterStatus?: TaskStatus | "all"
@@ -12,6 +15,7 @@ export interface TaskListProps {
 
 export function TaskList({
   tasks,
+  categories,
   selectedTaskId,
   onSelectTask,
   searchQuery,
@@ -33,7 +37,13 @@ export function TaskList({
     <ul className="flex flex-col gap-1.5">
       {tasks.map((task) => (
         <li key={task.id} className="chat-message-enter">
-          <TaskCard task={task} selected={task.id === selectedTaskId} onSelect={onSelectTask} />
+          <TaskCard
+            task={task}
+            selected={task.id === selectedTaskId}
+            onSelect={onSelectTask}
+            categoryLabel={categoryName(categories, task.categoryId)}
+            botName={botLabel(task.executorBotId)}
+          />
         </li>
       ))}
     </ul>

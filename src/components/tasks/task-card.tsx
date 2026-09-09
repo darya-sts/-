@@ -1,3 +1,4 @@
+import { Bot, Paperclip } from "lucide-react"
 import { StatusBadge } from "@/components/tasks/status-badge"
 import { PriorityBadge } from "@/components/tasks/priority-badge"
 import { checklistStats } from "@/lib/tasks/storage"
@@ -8,12 +9,18 @@ export function TaskCard({
   task,
   selected,
   onSelect,
+  categoryLabel,
+  botName,
 }: {
   task: Task
   selected?: boolean
   onSelect: (task: Task) => void
+  categoryLabel?: string
+  botName?: string
 }) {
   const stats = checklistStats(task.checklist)
+  const images = (task.attachments ?? []).filter((item) => item.kind === "image")
+  const files = task.attachments?.length ?? 0
   return (
     <button
       type="button"
@@ -30,14 +37,34 @@ export function TaskCard({
       <span className="flex flex-wrap items-center gap-1.5">
         <StatusBadge status={task.status} />
         <PriorityBadge priority={task.priority} />
+        {categoryLabel ? (
+          <span className="inline-flex h-5 items-center rounded-full bg-[#e8eef2] px-2 text-[11px] font-semibold text-[#5a6570]">
+            {categoryLabel}
+          </span>
+        ) : null}
       </span>
+      {botName && botName !== "Не назначен" ? (
+        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Bot className="size-3" />
+          {botName}
+        </span>
+      ) : null}
+      {images.length > 0 ? (
+        <span className="text-[11px] text-muted-foreground">Изображения: {images.length}</span>
+      ) : null}
       <span className="flex items-center justify-between text-[11px] text-muted-foreground">
         <span>
           Чек-лист {stats.done}/{stats.total || 0}
         </span>
-        {task.deadline ? (
-          <span>до {new Date(task.deadline).toLocaleDateString("ru-RU")}</span>
-        ) : null}
+        <span className="flex items-center gap-2">
+          {files > 0 ? (
+            <span className="inline-flex items-center gap-0.5">
+              <Paperclip className="size-3" />
+              {files}
+            </span>
+          ) : null}
+          {task.deadline ? <span>до {new Date(task.deadline).toLocaleDateString("ru-RU")}</span> : null}
+        </span>
       </span>
     </button>
   )

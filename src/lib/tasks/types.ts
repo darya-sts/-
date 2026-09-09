@@ -44,6 +44,46 @@ export interface TaskBotConfig {
   apiKeyName?: string
 }
 
+export type TaskViewMode = "list" | "kanban"
+
+export type AttachmentKind = "file" | "image" | "link"
+
+export interface TaskCategory {
+  id: string
+  name: string
+  createdAt: number
+}
+
+export interface TaskBoard {
+  id: string
+  name: string
+  /** `null` = все задачи, `"none"` = без категории */
+  categoryId: string | null
+  createdAt: number
+}
+
+export interface TaskAttachment {
+  id: string
+  kind: AttachmentKind
+  name: string
+  url?: string
+  mimeType?: string
+  size?: number
+  title?: string
+  excerpt?: string
+  createdAt: number
+}
+
+export interface TaskMemoryRecord {
+  id: string
+  taskId: string
+  title: string
+  savedAt: number
+  path: string
+  markdown: string
+  json: Record<string, unknown>
+}
+
 export interface Task {
   id: string
   title: string
@@ -56,6 +96,12 @@ export interface Task {
   checklist: ChecklistItem[]
   chat?: TaskChat
   botConfig?: TaskBotConfig
+  categoryId?: string | null
+  executorBotId?: string
+  attachments?: TaskAttachment[]
+  result?: string
+  memorySavedAt?: number
+  memoryPath?: string
 }
 
 export const TASK_STATUSES = [
@@ -81,7 +127,14 @@ export const STORAGE_KEYS = {
   tasks: "forgemill-tasks",
   taskChats: "forgemill-task-chats",
   settings: "forgemill-settings",
+  categories: "forgemill-task-categories",
+  boards: "forgemill-task-boards",
+  memory: "forgemill-task-memory",
 } as const
+
+export const ALL_BOARD_ID = "board-all"
+export const NONE_BOARD_ID = "board-none"
+export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
 
 export const BOT_MESSAGES = {
   starting: "🚀 Начинаю работу над задачей...",

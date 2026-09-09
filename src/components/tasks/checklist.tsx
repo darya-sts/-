@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
-import { checklistStats, newId } from "@/lib/tasks/storage"
+import { newId } from "@/lib/tasks/id"
+import { checklistStats } from "@/lib/tasks/storage"
 import type { ChecklistItem } from "@/lib/tasks/types"
 
 export interface ChecklistProps {

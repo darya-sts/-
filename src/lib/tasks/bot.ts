@@ -1,5 +1,6 @@
+import { findRelatedMemory } from "./memory"
 import { findVaultApiKey } from "@/lib/vault/live-items"
-import { newId } from "./storage"
+import { newId } from "./id"
 import {
   BOT_MESSAGES,
   type ChatMessage,
@@ -95,6 +96,16 @@ export class TaskBot {
     await sleep(350)
     yield { message: botMessage(BOT_MESSAGES.analyzing) }
     await sleep(350)
+
+    const related = findRelatedMemory(task)
+    if (related.length > 0) {
+      yield {
+        message: botMessage(
+          `🧠 Нашёл ${related.length} запис(и) в памяти: ${related.map((item) => item.path).join(", ")}.`
+        ),
+      }
+      await sleep(200)
+    }
 
     if (apiKey) {
       yield {
@@ -194,10 +205,11 @@ export class TaskBot {
     )
     yield {
       message: botMessage(`Закрыл ${pending.length} пункт(ов) чек-листа.`, "checklist_update"),
-      taskPatch: {
-        checklist,
-        status: "review",
-        chat: {
+        taskPatch: {
+          checklist,
+          status: "review",
+          result: `Закрыто ботом пунктов: ${pending.length}`,
+          chat: {
           messages: task.chat?.messages ?? [],
           isBotActive: true,
           botContext: { currentAction: "review", progress: 90 },
