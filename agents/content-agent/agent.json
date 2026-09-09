@@ -1,0 +1,20 @@
+{
+  "name": "ContentAgent",
+  "type": "agent",
+  "description": "Агент контент-фабрики: бриф, сценарий, нарезка под YouTube / X / Telegram.",
+  "skills": ["research", "script-writing", "shorts-hooks", "x-thread", "telegram-checklist"],
+  "rules": [
+    "Не выдумывать CPM и выплаты — брать цифры из src/data/.",
+    "Хук ролика ≤ 20 секунд, без «в этом видео мы поговорим».",
+    "X-тред должен содержать оригинальный тезис, не копипаст описания YouTube."
+  ],
+  "github": "https://github.com/darya-sts/-",
+  "repo": "darya-sts/-",
+  "server": {
+    "host": "app1.neurosolutions.pro",
+    "type": "VPS",
+    "path": "/opt/my_services/forge-mill-src"
+  },
+  "depends_on": ["ForgeMill", "MarvinBotStudio"],
+  "uses": ["DeepSeek", "BraveSearch"]
+}

@@ -45,8 +45,13 @@ services:
       MARVINBOT_API_BASE: ${MARVINBOT_API_BASE:-https://api.deepseek.com}
       MARVINBOT_MODEL: ${MARVINBOT_MODEL:-deepseek-chat}
       MARVIN_UPLOAD_DIR: /data/uploads
+      ARCHITECTURE_ROOT: /opt/forge-mill
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     volumes:
       - marvin_uploads:/data/uploads
+      # Корень монорепо для сканера архитектуры
+      - ./:/opt/forge-mill:ro
+      - /opt/my_services:/opt/my_services:ro
     ports:
       - "3001:3001"
 

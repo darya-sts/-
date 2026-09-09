@@ -49,3 +49,6 @@ backend/dist
 .env
 out
 .next
+
+# runtime architecture settings written by API
+/data/

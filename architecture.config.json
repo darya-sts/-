@@ -1,0 +1,29 @@
+{
+  "scanPaths": [
+    "./agents",
+    "./bots",
+    "./marvindeepseek-bot",
+    "../marvindeepseek-bot",
+    "../content-tg-bot",
+    "../marvinbot",
+    "/opt/my_services/marvindeepseek-bot",
+    "/opt/my_services/content-tg-bot",
+    "/opt/my_services/marvinbot",
+    "/opt/my_services/forge-mill-src"
+  ],
+  "github": {
+    "enabled": true,
+    "org": "darya-sts",
+    "repos": ["-"]
+  },
+  "serverCheck": {
+    "enabled": true,
+    "endpoints": {
+      "MarvinDeepSeekBot": "http://127.0.0.1:8082/health",
+      "SuyuyuBot": "http://127.0.0.1:8080/health",
+      "MarvinBotWorker": "http://127.0.0.1:8787/health",
+      "ForgeMillAPI": "http://127.0.0.1:3001/api/marvinbot/stats/dashboard",
+      "ForgeMillWeb": "http://127.0.0.1:8081/health"
+    }
+  }
+}

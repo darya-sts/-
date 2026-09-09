@@ -51,7 +51,9 @@ docker compose up -d --build
 ```
 
 MarvinBot Studio: https://app1.neurosolutions.pro/marvinbot/  
-API: https://app1.neurosolutions.pro/api/marvinbot/
+API: https://app1.neurosolutions.pro/api/marvinbot/  
+Архитектура (Mindmap): https://app1.neurosolutions.pro/architecture/  
+API архитектуры: https://app1.neurosolutions.pro/api/architecture/
 
 ## Что внутри
 

@@ -1,0 +1,16 @@
+{
+  "name": "SuyuyuBot",
+  "type": "bot",
+  "description": "Telegram writer-agent: статьи → черновик поста → approve в канал.",
+  "skills": ["writer_agent", "process_article", "channel-publish"],
+  "tools": ["deepseek-mcp", "timeweb-mcp"],
+  "rules": ["Публикация только после ручного approve"],
+  "github": "https://github.com/darya-sts/-/tree/cursor/tg-bot-testovyy-7ea1",
+  "server": {
+    "host": "72.56.18.124",
+    "type": "Docker",
+    "container": "tg-bot"
+  },
+  "depends_on": ["DeepSeek"],
+  "calls": ["DeepSeek"]
+}
