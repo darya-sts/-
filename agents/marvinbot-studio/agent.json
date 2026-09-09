@@ -1,0 +1,15 @@
+{
+  "name": "MarvinBotStudio",
+  "type": "app",
+  "description": "NestJS API + UI Studio: дайджесты Telegram и генерация статей.",
+  "skills": ["digest-pipeline", "article-generate", "telegram-sources", "export-pdf-docx"],
+  "rules": ["Ключи API только в .env", "Качество статьи проверять чеклистом перед экспортом"],
+  "github": "https://github.com/darya-sts/-",
+  "server": {
+    "host": "72.56.18.124",
+    "type": "Docker",
+    "ports": ["3001", "8081"]
+  },
+  "depends_on": ["DeepSeek", "Postgres", "Redis"],
+  "calls": ["DeepSeek"]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "MarvinDeepSeekBot",
+  "type": "bot",
+  "description": "Telegram-бот: вопрос в чат → ответ DeepSeek в том же чате.",
+  "skills": ["telegram-chat", "deepseek-completion", "dialog-history"],
+  "rules": [
+    "Отвечать на языке пользователя",
+    "Доступ только для ALLOWED_USERS",
+    "Не логировать токен бота"
+  ],
+  "github": "https://github.com/darya-sts/-/tree/cursor/marvindeepseek-chat-23f0/marvindeepseek-bot",
+  "repository": "darya-sts/-",
+  "server": {
+    "host": "72.56.18.124",
+    "type": "Docker",
+    "container": "marvindeepseek-bot",
+    "health": "http://127.0.0.1:8082/health"
+  },
+  "depends_on": ["DeepSeek"],
+  "uses": ["DeepSeek"]
+}
