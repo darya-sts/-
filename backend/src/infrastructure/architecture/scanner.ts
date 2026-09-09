@@ -258,9 +258,22 @@ function parseObject(
   }
 }
 
-function shouldScanFile(name: string): boolean {
-  if (CONFIG_FILE_NAMES.has(name.toLowerCase())) return true;
-  return FILE_PATTERNS.some((re) => re.test(name));
+function shouldScanFile(name: string, parentDir: string): boolean {
+  const base = name.toLowerCase();
+  if (base === "agent.json" || base === "bot.json") return true;
+  if (FILE_PATTERNS.some((re) => re.test(name))) return true;
+  // config.yaml/json — только внутри agent_*/bot_*/agents/bots
+  if (CONFIG_FILE_NAMES.has(base)) {
+    const parent = basename(parentDir).toLowerCase();
+    return (
+      shouldScanDir(parent) ||
+      parent.startsWith("agent") ||
+      parent.startsWith("bot") ||
+      parent.includes("agent") ||
+      parent.includes("bot")
+    );
+  }
+  return false;
 }
 
 function shouldScanDir(name: string): boolean {
