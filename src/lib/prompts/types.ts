@@ -1,4 +1,18 @@
 export type ModelTier = "economy" | "balanced" | "fast"
+export type PromptDirectionId = "design" | "marketing" | "consulting" | "research" | "development" | "admin" | (string & {})
+
+export type DirectionProfile = {
+  id: string
+  label: string
+  builtin: boolean
+  agents: string[]
+  skills: string[]
+  rules: string[]
+  modelTier: ModelTier
+  modelId: string
+  keywords: string[]
+}
+
 export type PromptStatus = "draft" | "delegated"
 export type TaskPriority = "urgent" | "standard" | "background"
 
@@ -26,6 +40,7 @@ export type PromptRecord = {
   body: string
   status: PromptStatus
   recommendedTier: ModelTier
+  directions: string[]
   createdAt: string
   updatedAt: string
 }
@@ -34,6 +49,7 @@ export type PromptTaskRecord = {
   id: string
   promptId: string
   promptTitle: string
+  directions: string[]
   agents: string[]
   agentRoles: Record<string, string>
   modelTier: ModelTier
@@ -77,6 +93,7 @@ export const PROMPTS_STORAGE = {
   prompts: "forgemill-prompts",
   tasks: "forgemill-prompt-tasks",
   memory: "forgemill-prompt-memory",
+  directionMap: "forgemill-prompt-direction-map",
 } as const
 
 export const STATUS_LABEL: Record<PromptStatus, string> = {

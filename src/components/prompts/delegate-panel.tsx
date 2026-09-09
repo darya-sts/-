@@ -1,6 +1,7 @@
 "use client"
 
 import { Send } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,20 +20,64 @@ export function DelegatePanel({
   onChange,
   onSubmit,
   busy,
+  highlightAgents = [],
+  recommendedModelId,
+  skills = [],
+  rules = [],
 }: {
   value: DelegateInput
   onChange: (next: DelegateInput) => void
   onSubmit: () => void
   busy: boolean
+  highlightAgents?: string[]
+  recommendedModelId?: string
+  skills?: string[]
+  rules?: string[]
 }) {
   const [allAgents, setAllAgents] = useState(false)
   const models = useMemo(() => PROMPT_MODELS.filter((model) => model.tier === value.modelTier), [value.modelTier])
-  const agents = allAgents ? PROMPT_AGENTS : PROMPT_AGENTS.filter((agent) => ["coding", "explore", "frontend", "testing", "debug", "writing"].includes(agent.id) || value.agents.includes(agent.id))
+  const highlight = new Set(highlightAgents)
+  const agents = allAgents
+    ? PROMPT_AGENTS
+    : PROMPT_AGENTS.filter(
+        (agent) =>
+          ["coding", "explore", "frontend", "testing", "debug", "writing"].includes(agent.id) ||
+          value.agents.includes(agent.id) ||
+          highlight.has(agent.id)
+      )
 
   return (
     <Card className="chat-message-enter">
       <CardContent className="grid gap-5">
         <h2 className="text-sm font-bold">2. Чек-лист делегирования</h2>
+        {skills.length || rules.length ? (
+          <div className="grid gap-2 rounded-xl bg-white/80 p-3">
+            {skills.length ? (
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground">Навыки из карты</p>
+                <div className="flex flex-wrap gap-1">
+                  {skills.map((item) => (
+                    <Badge key={item} variant="outline">
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {rules.length ? (
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground">Правила</p>
+                <div className="flex flex-wrap gap-1">
+                  {rules.map((item) => (
+                    <Badge key={item} variant="secondary">
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <section className="grid gap-2">
           <div className="flex items-center justify-between gap-2">
@@ -44,8 +89,18 @@ export function DelegatePanel({
           <div className="grid gap-2 sm:grid-cols-2">
             {agents.map((agent) => {
               const on = value.agents.includes(agent.id)
+              const recommended = highlight.has(agent.id)
               return (
-                <label key={agent.id} className={cn("rounded-xl bg-white/80 p-3 text-sm", on && "ring-1 ring-primary")}>
+                <label
+                  key={agent.id}
+                  data-testid={`delegate-agent-${agent.id}`}
+                  data-recommended={recommended ? "true" : "false"}
+                  className={cn(
+                    "rounded-xl bg-white/80 p-3 text-sm",
+                    on && "ring-1 ring-primary",
+                    recommended && "ring-2 ring-primary"
+                  )}
+                >
                   <span className="flex items-start gap-2">
                     <input
                       type="checkbox"
@@ -53,7 +108,14 @@ export function DelegatePanel({
                       onChange={() => onChange({ ...value, agents: toggle(value.agents, agent.id) })}
                     />
                     <span>
-                      <span className="font-medium">{agent.name}</span>
+                      <span className="flex flex-wrap items-center gap-1">
+                        <span className="font-medium">{agent.name}</span>
+                        {recommended ? (
+                          <Badge variant="default" data-testid={`recommended-agent-${agent.id}`}>
+                            рекомендовано
+                          </Badge>
+                        ) : null}
+                      </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">{agent.description}</span>
                     </span>
                   </span>
@@ -82,18 +144,32 @@ export function DelegatePanel({
             ))}
           </div>
           <div className="grid gap-2">
-            {models.map((model) => (
-              <label key={model.id} className={cn("flex cursor-pointer items-start gap-2 rounded-xl bg-white/80 p-3 text-sm", value.modelId === model.id && "ring-1 ring-primary")}>
-                <input type="radio" name="prompt-model" checked={value.modelId === model.id} onChange={() => onChange({ ...value, modelId: model.id })} />
-                <span>
-                  <span className="font-medium">{model.name}</span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                    скорость {model.speed} · стоимость {model.cost} · {model.quality}
+            {models.map((model) => {
+              const recommended = recommendedModelId === model.id
+              return (
+                <label
+                  key={model.id}
+                  data-testid={`delegate-model-${model.id}`}
+                  className={cn(
+                    "flex cursor-pointer items-start gap-2 rounded-xl bg-white/80 p-3 text-sm",
+                    value.modelId === model.id && "ring-1 ring-primary",
+                    recommended && "ring-2 ring-primary"
+                  )}
+                >
+                  <input type="radio" name="prompt-model" checked={value.modelId === model.id} onChange={() => onChange({ ...value, modelId: model.id })} />
+                  <span>
+                    <span className="flex flex-wrap items-center gap-1">
+                      <span className="font-medium">{model.name}</span>
+                      {recommended ? <Badge variant="default">рекомендовано</Badge> : null}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      скорость {model.speed} · стоимость {model.cost} · {model.quality}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">{model.recommendedFor}</span>
                   </span>
-                  <span className="block text-xs text-muted-foreground">{model.recommendedFor}</span>
-                </span>
-              </label>
-            ))}
+                </label>
+              )
+            })}
           </div>
         </section>
 

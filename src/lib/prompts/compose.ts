@@ -1,6 +1,14 @@
 import { PROMPT_AGENTS, PROMPT_MODELS } from "@/data/prompts"
 import type { DelegateInput, ModelTier, PromptRecord } from "@/lib/prompts/types"
 
+export type ComposeExtras = {
+  directions?: { id: string; label: string }[]
+  skills?: string[]
+  rules?: string[]
+  recommendedTier?: ModelTier
+  modelId?: string
+}
+
 export function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9а-яё]+/gi, "-").replace(/^-|-$/g, "").slice(0, 60) || "prompt"
 }
@@ -18,20 +26,32 @@ export function deriveTitle(request: string, title?: string) {
   return (request.trim().split(/\n/)[0] || "Промт").slice(0, 80)
 }
 
-export function composePrompt(request: string, title?: string) {
+export function composePrompt(request: string, title?: string, extras: ComposeExtras = {}) {
   const resolvedTitle = deriveTitle(request, title)
-  const recommendedTier = recommendModelTier(request)
+  const recommendedTier = extras.recommendedTier ?? recommendModelTier(request)
+  const directionLines = (extras.directions ?? []).map((item) => `- ${item.label} (\`${item.id}\`)`)
+  const skillLines = (extras.skills ?? []).map((item) => `- ${item}`)
+  const ruleLines = (extras.rules ?? []).map((item) => `- ${item}`)
   const body = [
     `# ${resolvedTitle}`,
     "",
     "## Цель",
     request.trim(),
     "",
+    "## Направления",
+    directionLines.length ? directionLines.join("\n") : "- (не указаны)",
+    "",
     "## Контекст",
     "- Репозиторий: Forge Mill — кабинет контент-фабрики (Next.js, static export).",
     "- Соблюдать дизайн-систему кабинета: карточки `#dceef8`, кнопки `#0b66c3`, TT Commons.",
     "- Не ломать Задачи, Агенты, Базу паролей и live-разделы MarvinBot/Architecture.",
     "",
+    skillLines.length ? "## Навыки" : null,
+    skillLines.length ? skillLines.join("\n") : null,
+    skillLines.length ? "" : null,
+    ruleLines.length ? "## Правила" : null,
+    ruleLines.length ? ruleLines.join("\n") : null,
+    ruleLines.length ? "" : null,
     "## Требования к результату",
     "1. Выполни задачу полностью, без заглушек.",
     "2. Покрой проверками (build / e2e / ручная проверка по ситуации).",
@@ -43,8 +63,10 @@ export function composePrompt(request: string, title?: string) {
     "- Комментарии в коде — на русском, где это принято в проекте.",
     "",
     "## Рекомендуемый тариф модели",
-    `- ${recommendedTier}`,
-  ].join("\n")
+    extras.modelId ? `- ${recommendedTier} · \`${extras.modelId}\`` : `- ${recommendedTier}`,
+  ]
+    .filter((line) => line !== null)
+    .join("\n")
   return { title: resolvedTitle, body, recommendedTier }
 }
 
@@ -54,10 +76,12 @@ export function buildPackageMarkdown(prompt: PromptRecord, dto: DelegateInput) {
   const agentLines = agents
     .map((agent) => `- **${agent.name}** (\`${agent.id}\`): ${dto.agentRoles[agent.id] || "роль не указана"}`)
     .join("\n")
+  const directionLine = (prompt.directions ?? []).length ? `directions: ${prompt.directions.join(", ")}` : null
   return [
     `# Cursor Task: ${prompt.title}`,
     "",
     `promptId: \`${prompt.id}\``,
+    directionLine,
     `priority: **${dto.priority}**`,
     dto.deadline ? `deadline: ${dto.deadline}` : null,
     dto.inputRef ? `input: ${dto.inputRef}` : null,

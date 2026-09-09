@@ -1,5 +1,6 @@
 import { newId } from "@/lib/tasks/id"
 import { buildPackageMarkdown } from "@/lib/prompts/compose"
+import { normalizeDirections } from "@/lib/prompts/directions"
 import {
   PROMPTS_STORAGE,
   type DelegateInput,
@@ -25,11 +26,17 @@ function writeList<T>(key: string, value: T[]) {
 }
 
 export function loadPrompts() {
-  return readList<PromptRecord>(PROMPTS_STORAGE.prompts)
+  return readList<PromptRecord>(PROMPTS_STORAGE.prompts).map((item) => ({
+    ...item,
+    directions: normalizeDirections(item.directions),
+  }))
 }
 
 export function loadPromptTasks() {
-  return readList<PromptTaskRecord>(PROMPTS_STORAGE.tasks)
+  return readList<PromptTaskRecord>(PROMPTS_STORAGE.tasks).map((item) => ({
+    ...item,
+    directions: normalizeDirections(item.directions),
+  }))
 }
 
 export function loadPromptMemory() {
@@ -43,7 +50,10 @@ export function createPrompt(input: Omit<PromptRecord, "id" | "createdAt" | "upd
   return record
 }
 
-export function updatePrompt(id: string, patch: Partial<Pick<PromptRecord, "title" | "body" | "status" | "request">>) {
+export function updatePrompt(
+  id: string,
+  patch: Partial<Pick<PromptRecord, "title" | "body" | "status" | "request" | "directions" | "recommendedTier">>
+) {
   const next = loadPrompts().map((item) =>
     item.id === id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item
   )
@@ -66,6 +76,7 @@ export function delegatePrompt(prompt: PromptRecord, dto: DelegateInput) {
     id: newId(),
     promptId: prompt.id,
     promptTitle: prompt.title,
+    directions: normalizeDirections(prompt.directions),
     agents: dto.agents,
     agentRoles: dto.agentRoles,
     modelTier: dto.modelTier,
