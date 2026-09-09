@@ -1,0 +1,17 @@
+---
+description: Конвейер Figma в Cursor — прототип, превью, затем код. Включай, когда речь о макетах или Figma MCP.
+alwaysApply: false
+---
+
+Запись на холст Figma — только через официальный remote MCP (`use_figma`). REST API фреймы не создаёт.
+
+Фазы и гейты:
+1. Wireframe на странице `01 Wireframes`. Стоп. Жди фразу `УТВЕРЖДАЮ ПРОТОТИП`.
+2. Hi-fi на странице `02 Hi-Fi`. Стоп. Жди фразу `УТВЕРЖДАЮ ПРЕВЬЮ` и ссылку на фрейм.
+3. Код по утверждённому hi-fi через `get_design_context`, не из памяти чата.
+
+Без URL файла Figma ничего не пиши на холст. Не публикуй library. Не коммить и не пушь, пока пользователь не попросил. Не выдумывай фото: плейсхолдеры. Если MCP вернул localhost-URL ассета — используй его.
+
+Стек этого репозитория (Forge Mill): Next.js App Router, static export, React 19, Tailwind v4, shadcn, кабинет Bitrix24 v6 — canvas `#e6e9ec`, sidebar `#ECEFF1`, карточки `#dceef8`, primary `#0b66c3`, шрифт TT Commons. Не ломай Задачи, Агенты, Промты, Vault, live MarvinBot/Architecture.
+
+Подробности: `docs/figma-cursor.md`. Команды: `/figma-wireframe`, `/figma-hifi`, `/figma-implement`.

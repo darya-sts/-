@@ -78,6 +78,13 @@ export const mcpServers: McpServer[] = [
     setup: "Hosted MCP Blotato. $29+/мес — не в lean-стек.",
   },
   {
+    name: "Figma MCP",
+    official: true,
+    use: "Прототип и hi-fi на холсте (use_figma), затем код с фрейма. Full seat. Гейты: УТВЕРЖДАЮ ПРОТОТИП / УТВЕРЖДАЮ ПРЕВЬЮ.",
+    setup: "Cursor: /add-plugin figma или MCP URL https://mcp.figma.com/mcp (OAuth). Файл и чеклист: docs/figma-cursor.md",
+    caution: "REST PAT не рисует фреймы. Write-to-canvas — бета, нужен Full seat и can edit.",
+  },
+  {
     name: "Google Drive MCP",
     official: true,
     use: "Склад исходников, если не Git/локальный диск.",
@@ -104,6 +111,9 @@ Always:
 
 export const MCP_JSON_EXAMPLE = `{
   "mcpServers": {
+    "figma": {
+      "url": "https://mcp.figma.com/mcp"
+    },
     "notion": {
       "url": "https://mcp.notion.com/mcp"
     },
