@@ -15,6 +15,7 @@ import {
   parseImportedVault,
   saveVaultBlob,
 } from "@/lib/vault/storage"
+import { setLiveVaultItems } from "@/lib/vault/live-items"
 import type { VaultItem } from "@/lib/vault/types"
 import { VaultItemForm } from "./vault-item-form"
 import { VaultItemList } from "./vault-item-list"
@@ -46,6 +47,7 @@ export function VaultPage() {
     const blob = await encryptItems(next, password)
     saveVaultBlob(blob)
     setItems(next)
+    setLiveVaultItems(next)
   }, [])
 
   const unlock = useCallback(async (password: string) => {
@@ -56,8 +58,11 @@ export function VaultPage() {
       if (!blob) {
         saveVaultBlob(await encryptItems([], password))
         setItems([])
+        setLiveVaultItems([])
       } else {
-        setItems(await decryptItems(blob, password))
+        const decrypted = await decryptItems(blob, password)
+        setItems(decrypted)
+        setLiveVaultItems(decrypted)
       }
       passwordRef.current = password
       markSessionUnlocked()
@@ -72,6 +77,7 @@ export function VaultPage() {
   const lock = useCallback(() => {
     passwordRef.current = ""
     setItems([])
+    setLiveVaultItems(null)
     setSelectedId(null)
     setPanel("view")
     setQuery("")

@@ -4,6 +4,7 @@ import {
   CalendarDays,
   GitBranch,
   LayoutDashboard,
+  ListTodo,
   Lock,
   Network,
   Shield,
@@ -31,6 +32,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/", label: "Обзор", hint: "Цели и дедлайн YPP", icon: LayoutDashboard },
       { href: "/vault", label: "База паролей", hint: "Ключи и заметки", icon: Lock },
+      { href: "/tasks", label: "Задачи", hint: "Чек-листы и ИИ-агент", icon: ListTodo },
       { href: "/niches", label: "Ниши", hint: "Высокий CPM, EN-аудитория", icon: Target },
       { href: "/tools", label: "Инструменты", hint: "Каталог и MCP", icon: Wrench },
     ],
