@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { Download, Lock, Plus, Search, Upload } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -26,8 +26,12 @@ type Panel = "view" | "create" | "edit"
 export function VaultPage() {
   const passwordRef = useRef("")
   const importRef = useRef<HTMLInputElement>(null)
-  const [ready, setReady] = useState(false)
-  const [exists, setExists] = useState(false)
+  const isClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
+  const exists = isClient && hasVault()
   const [unlocked, setUnlocked] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,18 +40,12 @@ export function VaultPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [panel, setPanel] = useState<Panel>("view")
 
-  useEffect(() => {
-    setExists(hasVault())
-    setReady(true)
-  }, [])
-
   const persist = useCallback(async (next: VaultItem[]) => {
     const password = passwordRef.current
     if (!password) throw new Error("Сейф заблокирован")
     const blob = await encryptItems(next, password)
     saveVaultBlob(blob)
     setItems(next)
-    setExists(true)
   }, [])
 
   const unlock = useCallback(async (password: string) => {
@@ -63,7 +61,6 @@ export function VaultPage() {
       }
       passwordRef.current = password
       markSessionUnlocked()
-      setExists(true)
       setUnlocked(true)
     } catch {
       setError("Неверный мастер-пароль или повреждённый сейф")
@@ -150,13 +147,12 @@ export function VaultPage() {
       const parsed = parseImportedVault(await file.text())
       saveVaultBlob(parsed)
       lock()
-      setExists(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось импортировать файл")
     }
   }, [lock])
 
-  if (!ready) {
+  if (!isClient) {
     return (
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
         <p className="text-sm text-muted-foreground">Загрузка сейфа…</p>
