@@ -191,7 +191,7 @@ export default function TasksPage() {
               <div className="grid gap-4">
                 <h2 className="text-lg font-bold">Новая задача</h2>
                 <TaskForm
-                  submitLabel="Создать"
+                  submitLabel="Создать задачу"
                   onCancel={() => {
                     setMode("view")
                     setSelectedId(tasks[0]?.id ?? null)

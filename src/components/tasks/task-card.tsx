@@ -24,6 +24,7 @@ export function TaskCard({
           ? "border-primary bg-white shadow-[inset_3px_0_0_var(--primary)]"
           : "border-transparent bg-white/70 hover:border-border hover:bg-white"
       )}
+      data-testid="task-card"
     >
       <span className="line-clamp-2 text-sm font-semibold text-foreground">{task.title}</span>
       <span className="flex flex-wrap items-center gap-1.5">
