@@ -1,3 +1,5 @@
+@import url("fonts.css");
+
 :root {
   --white: #ffffff;
   --cyan: #1cb5e0;
@@ -14,7 +16,12 @@
   --shadow: 0 8px 24px rgba(11, 102, 195, 0.06);
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--white); color: var(--black); }
+html, body {
+  margin: 0;
+  background: var(--white);
+  color: var(--black);
+  font-family: "TT Commons", system-ui, sans-serif;
+}
 button, input { font: inherit; }
 a { color: inherit; text-decoration: none; }
 button { cursor: pointer; }
@@ -110,7 +117,6 @@ h1 { font-size: 34px; line-height: 1.15; margin: 0 0 10px; letter-spacing: -.03e
   .metrics, .cards { grid-template-columns: 1fr; }
 }
 
-body.v1 { font-family: Inter, system-ui, sans-serif; }
 body.v1 .picker a.on, body.v1 .logo, body.v1 .btn.primary, body.v1 .ava { background: #0b66c3; }
 body.v1 .nav a.active { background: #fff; box-shadow: var(--shadow); color: #0b66c3; }
 body.v1 .btn.ghost { background: #fff; border-color: #dce3ea; }
@@ -119,7 +125,6 @@ body.v1 .badge { border: 1px solid #e6e8eb; background: #fff; }
 body.v1 .kicker { color: #000; }
 body.v1 .main { padding: 36px 48px 64px; }
 
-body.v2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; }
 body.v2 .picker a.on, body.v2 .logo, body.v2 .btn.primary, body.v2 .badge { background: #1cb5e0; color: #fff; }
 body.v2 .kicker, body.v2 h1, body.v2 .card h3 { color: #337591; }
 body.v2 .nav a.active { background: #1cb5e0; color: #fff; }
@@ -128,7 +133,6 @@ body.v2 .btn.ghost { background: #e7f8fd; color: #1cb5e0; }
 body.v2 .banner, body.v2 .card { background: var(--pale); border: 1px solid var(--pale-2); }
 body.v2 .progress i { background: #1cb5e0; }
 
-body.v3 { font-family: "IBM Plex Sans", Inter, sans-serif; }
 body.v3 .picker a.on, body.v3 .logo, body.v3 .btn.primary, body.v3 .ava { background: #0b66c3; }
 body.v3 .btn, body.v3 .nav a, body.v3 .card, body.v3 .search { border-radius: 4px; }
 body.v3 .kicker, body.v3 .card h3 { color: #337591; }
@@ -138,7 +142,6 @@ body.v3 .banner { background: var(--pale); border: 1px solid var(--pale-2); bord
 body.v3 .badge { background: #4b9b4f; color: #fff; border-radius: 4px; }
 body.v3 .card { background: var(--pale); border: 1px solid var(--pale-2); box-shadow: 0 1px 2px rgba(0,0,0,.05); }
 
-body.v4 { font-family: Outfit, Inter, sans-serif; }
 body.v4 .picker a.on, body.v4 .btn.primary { background: #1cb5e0; color: #000; }
 body.v4 .logo { background: #000; }
 body.v4 .nav svg { color: #1cb5e0; }
@@ -148,7 +151,6 @@ body.v4 .card, body.v4 .banner { background: var(--pale); border: 1px solid #337
 body.v4 .badge { background: #4b9b4f; color: #fff; border-radius: 2px; }
 body.v4 .stat { font-variant-numeric: tabular-nums; }
 
-body.v5 { font-family: "DM Sans", Inter, sans-serif; }
 body.v5 .picker a.on, body.v5 .logo, body.v5 .btn.primary, body.v5 .nav a.active { background: #0b66c3; color: #fff; }
 body.v5 .nav a.active em { color: #d7ecff; }
 body.v5 .kicker { color: #1cb5e0; }
