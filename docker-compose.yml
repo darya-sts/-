@@ -38,6 +38,7 @@ services:
         condition: service_healthy
     environment:
       PORT: "3001"
+      NODE_ENV: production
       DATABASE_URL: postgresql://forge:forge@postgres:5432/forge_mill?schema=public
       REDIS_URL: redis://redis:6379
       MARVINBOT_API_KEY: ${MARVINBOT_API_KEY:-}
@@ -47,9 +48,13 @@ services:
       MARVIN_UPLOAD_DIR: /data/uploads
       ARCHITECTURE_ROOT: /opt/forge-mill
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-change-me-in-production}
+      AUTH_ACCESS_TTL_SEC: ${AUTH_ACCESS_TTL_SEC:-900}
+      AUTH_REFRESH_TTL_SEC: ${AUTH_REFRESH_TTL_SEC:-2592000}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - marvin_uploads:/data/uploads
-      # Корень монорепо для сканера архитектуры
       - ./:/opt/forge-mill:ro
       - /opt/my_services:/opt/my_services:ro
     ports:

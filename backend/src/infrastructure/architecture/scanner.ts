@@ -299,7 +299,7 @@ function walkDir(dir: string, out: string[], depth = 0): void {
     }
     if (st.isDirectory()) {
       if (shouldScanDir(name) || depth < 4) walkDir(full, out, depth + 1);
-    } else if (st.isFile() && shouldScanFile(name)) {
+    } else if (st.isFile() && shouldScanFile(name, dir)) {
       out.push(full);
     }
   }
@@ -360,7 +360,7 @@ async function scanGithub(
       const files = (data.tree || []).filter(
         (t) =>
           t.type === "blob" &&
-          (shouldScanFile(basename(t.path)) ||
+          (shouldScanFile(basename(t.path), t.path.split("/").slice(0, -1).join("/") || ".") ||
             /\/(agent|bot)\.(json|yaml|yml)$/i.test(t.path)),
       );
       for (const f of files.slice(0, 40)) {

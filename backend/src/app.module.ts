@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+import { AuthModule } from "./auth/auth.module";
 import { MarvinStudioService } from "./application/marvin-studio.service";
 import { DigestPipelineService } from "./application/digest-pipeline.service";
 import { TokenLoggingMiddleware } from "./common/token-logging.middleware";
@@ -10,6 +11,7 @@ import { RedisService } from "./infrastructure/redis/redis.service";
 import { MarvinBotController } from "./presentation/marvinbot.controller";
 
 @Module({
+  imports: [AuthModule],
   controllers: [MarvinBotController, ArchitectureController],
   providers: [
     PrismaService,

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, Factory } from "lucide-react"
+import { Menu, Factory, LogOut } from "lucide-react"
 import { NAV } from "@/data/nav"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,6 +13,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/components/auth/auth-provider"
 
 function Logo() {
   return (
@@ -48,7 +49,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               "rounded-lg px-3 py-2.5 transition-colors",
               active
                 ? "bg-sidebar-accent text-sidebar-foreground"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
             )}
           >
             <span className="block text-sm font-medium">{item.label}</span>
@@ -57,6 +58,35 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         )
       })}
     </nav>
+  )
+}
+
+function UserFooter() {
+  const { user, logout } = useAuth()
+  if (!user) return null
+  return (
+    <div className="mt-4 space-y-2 border-t border-sidebar-border pt-4">
+      <p className="truncate px-1 text-[11px] text-sidebar-foreground/55">{user.email}</p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full justify-start border-sidebar-border bg-transparent text-sidebar-foreground hover:bg-sidebar-accent"
+        onClick={() => void logout()}
+      >
+        <LogOut />
+        Выйти
+      </Button>
+    </div>
+  )
+}
+
+function MobileLogout() {
+  const { logout } = useAuth()
+  return (
+    <Button variant="outline" size="icon-sm" onClick={() => void logout()}>
+      <LogOut />
+      <span className="sr-only">Выйти</span>
+    </Button>
   )
 }
 
@@ -71,25 +101,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <p className="px-1 text-[11px] leading-relaxed text-sidebar-foreground/45">
           Цель: $1 000–2 000 чистыми к месяцу 6. YPP успеть до 1 февраля 2027.
         </p>
+        <UserFooter />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-background/85 px-4 py-3 backdrop-blur-md lg:hidden">
           <Logo />
-          <Sheet>
-            <SheetTrigger render={<Button variant="outline" size="icon-sm" />}>
-              <Menu />
-              <span className="sr-only">Меню</span>
-            </SheetTrigger>
-            <SheetContent side="left" className="mill-rail w-72 border-sidebar-border p-0 text-sidebar-foreground">
-              <SheetHeader>
-                <SheetTitle className="text-sidebar-foreground">Навигация</SheetTitle>
-              </SheetHeader>
-              <div className="px-3 pb-6">
-                <NavLinks />
-              </div>
-            </SheetContent>
-          </Sheet>
+          <div className="flex items-center gap-2">
+            <MobileLogout />
+            <Sheet>
+              <SheetTrigger render={<Button variant="outline" size="icon-sm" />}>
+                <Menu />
+                <span className="sr-only">Меню</span>
+              </SheetTrigger>
+              <SheetContent
+                side="left"
+                className="mill-rail w-72 border-sidebar-border p-0 text-sidebar-foreground"
+              >
+                <SheetHeader>
+                  <SheetTitle className="text-sidebar-foreground">Навигация</SheetTitle>
+                </SheetHeader>
+                <div className="px-3 pb-6">
+                  <NavLinks />
+                  <UserFooter />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </header>
         <div className="flex-1">{children}</div>
       </div>

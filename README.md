@@ -68,6 +68,7 @@ API архитектуры: https://app1.neurosolutions.pro/api/architecture/
 | Cursor + MCP | `mcp.json`, правило канала, список серверов |
 | Конвейер | SOP: один лонг → Shorts / тред / пост TG |
 | MarvinBot Studio | Дайджесты Telegram, источники, генерация статей, чат, экспорт |
+| Архитектура | Mindmap агентов/ботов/сервисов, карточки, настройки сканера |
 
 ## Рекомендованный lean-стек (≈ $53/мес сверх Cursor)
 

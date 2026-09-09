@@ -63,6 +63,7 @@ const API_BASE = process.env.NEXT_PUBLIC_MARVIN_API_BASE || "/api/marvinbot"
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers || {}),
@@ -95,7 +96,7 @@ export const marvinApi = {
   uploadImage: async (file: File) => {
     const form = new FormData()
     form.append("file", file)
-    const res = await fetch(`${API_BASE}/upload`, { method: "POST", body: form })
+    const res = await fetch(`${API_BASE}/upload`, { method: "POST", body: form, credentials: "include" })
     if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`)
     return res.json() as Promise<{ url: string; filename: string }>
   },

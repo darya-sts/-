@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import { Manrope, Unbounded, IBM_Plex_Mono } from "next/font/google"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { AppShell } from "@/components/app-shell"
+import { AuthProvider } from "@/components/auth/auth-provider"
+import { AppShellGate } from "@/components/auth/app-shell-gate"
 import "./globals.css"
 
 const manrope = Manrope({
@@ -38,7 +39,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full">
         <TooltipProvider>
-          <AppShell>{children}</AppShell>
+          <AuthProvider>
+            <AppShellGate>{children}</AppShellGate>
+          </AuthProvider>
         </TooltipProvider>
       </body>
     </html>
