@@ -11,6 +11,7 @@ const JUMP: Record<string, string> = {
   m: "/marvinbot/",
   n: "/niches/",
   p: "/plan/",
+  q: "/prompts/",
 }
 
 export function NavHotkeys() {
