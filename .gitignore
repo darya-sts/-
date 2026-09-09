@@ -52,3 +52,13 @@ out
 
 # runtime architecture settings written by API
 /data/
+
+# Prompt Studio runtime outputs (keep .gitkeep)
+/prompts/pdf/**
+!/prompts/pdf/.gitkeep
+/prompts/tasks/**
+!/prompts/tasks/.gitkeep
+/prompts/memory/**
+!/prompts/memory/.gitkeep
+/.cursor/tasks/**
+!/.cursor/tasks/.gitkeep

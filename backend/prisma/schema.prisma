@@ -114,3 +114,43 @@ model RefreshToken {
   @@index([userId])
   @@index([tokenHash])
 }
+
+/// Сохранённый промт (Prompt Studio)
+model Prompt {
+  id          String       @id @default(cuid())
+  title       String
+  request     String       @db.Text
+  body        String       @db.Text
+  status      String       @default("draft")
+  createdById String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  tasks       PromptTask[]
+
+  @@index([createdAt])
+}
+
+/// Делегирование промта в Cursor (история заданий)
+model PromptTask {
+  id              String   @id @default(cuid())
+  promptId        String
+  prompt          Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  agents          String[]
+  agentRoles      String   @db.Text
+  modelTier       String
+  modelId         String
+  publications    String[]
+  saveToMemory    Boolean  @default(false)
+  memoryItems     String[]
+  priority        String   @default("standard")
+  deadline        String?
+  inputRef        String?  @db.Text
+  packageMarkdown String   @db.Text
+  pdfPath         String?
+  outputPaths     String[]
+  status          String   @default("ready")
+  createdAt       DateTime @default(now())
+
+  @@index([promptId])
+  @@index([createdAt])
+}

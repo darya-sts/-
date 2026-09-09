@@ -47,6 +47,7 @@ services:
       MARVINBOT_MODEL: ${MARVINBOT_MODEL:-deepseek-chat}
       MARVIN_UPLOAD_DIR: /data/uploads
       ARCHITECTURE_ROOT: /opt/forge-mill
+      PROMPTS_ROOT: /opt/forge-mill
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-change-me-in-production}
       AUTH_ACCESS_TTL_SEC: ${AUTH_ACCESS_TTL_SEC:-900}
@@ -55,7 +56,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - marvin_uploads:/data/uploads
-      - ./:/opt/forge-mill:ro
+      - ./:/opt/forge-mill
       - /opt/my_services:/opt/my_services:ro
     ports:
       - "3001:3001"

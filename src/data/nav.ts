@@ -9,4 +9,5 @@ export const NAV = [
   { href: "/pipeline", label: "Конвейер", hint: "От идеи до трёх платформ" },
   { href: "/marvinbot", label: "MarvinBot Studio", hint: "Дайджесты TG и статьи" },
   { href: "/architecture", label: "Архитектура", hint: "Mindmap агентов и ботов" },
+  { href: "/prompts", label: "Промты", hint: "PDF и делегирование в Cursor" },
 ] as const
