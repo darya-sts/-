@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, Factory } from "lucide-react"
+import { Menu, Factory, Lock } from "lucide-react"
 import { NAV } from "@/data/nav"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,7 +35,10 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="flex flex-col gap-0.5">
       {NAV.map((item) => {
-        const active = pathname === item.href
+        const active =
+          item.href === "/"
+            ? pathname === "/"
+            : pathname === item.href || pathname.startsWith(`${item.href}/`)
         return (
           <Link
             key={item.href}
@@ -48,7 +51,10 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
             )}
           >
-            <span className="block text-sm font-medium">{item.label}</span>
+            <span className="flex items-center gap-2 text-sm font-medium">
+              {item.href === "/vault" ? <Lock className="size-3.5 shrink-0 opacity-80" /> : null}
+              {item.label}
+            </span>
             <span className="block text-[11px] text-sidebar-foreground/45">{item.hint}</span>
           </Link>
         )
