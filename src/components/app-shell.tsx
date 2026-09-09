@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { CommandSearch } from "@/components/command-search"
+import { NavHotkeys } from "@/components/nav-hotkeys"
 import { ShellUser } from "@/components/shell-user"
 
 function Logo() {
@@ -73,6 +74,10 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function crumbs(pathname: string) {
+  if (pathname.includes("/agents/settings")) return { page: "Настройки агентов" }
+  if (/\/agents\/[^/]+/.test(pathname) && !pathname.endsWith("/agents/") && pathname !== "/agents") {
+    return { page: "Карточка агента" }
+  }
   const match = NAV.find((item) => isActive(pathname, item.href) && item.href !== "/")
   if (!match || pathname === "/" || pathname === "") return { page: "Обзор" }
   return { page: match.label }
@@ -84,6 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-full">
+      <NavHotkeys />
       <aside className="mill-rail sticky top-0 hidden h-svh w-[268px] shrink-0 flex-col border-r border-sidebar-border px-3 py-4 md:flex">
         <Logo />
         <div className="mt-4 px-1">
