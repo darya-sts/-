@@ -2,7 +2,8 @@ import type { Metadata } from "next"
 import localFont from "next/font/local"
 import { IBM_Plex_Mono } from "next/font/google"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { AppShell } from "@/components/app-shell"
+import { AuthProvider } from "@/components/auth/auth-provider"
+import { AppShellGate } from "@/components/auth/app-shell-gate"
 import "./globals.css"
 
 const ttCommons = localFont({
@@ -36,7 +37,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ru" className={`${ttCommons.variable} ${ibm.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
         <TooltipProvider>
-          <AppShell>{children}</AppShell>
+          <AuthProvider>
+            <AppShellGate>{children}</AppShellGate>
+          </AuthProvider>
         </TooltipProvider>
       </body>
     </html>

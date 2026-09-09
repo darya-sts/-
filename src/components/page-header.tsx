@@ -25,7 +25,7 @@ export function PageHeader({
   return (
     <header className="max-w-3xl">
       <p className="text-xs font-medium tracking-[0.2em] text-primary uppercase">{kicker}</p>
-      <h1 className="font-heading mt-2 text-3xl tracking-tight text-balance sm:text-4xl">{title}</h1>
+      <h1 className="mt-2 text-3xl font-bold tracking-tight text-balance sm:text-4xl">{title}</h1>
       <p className="mt-3 text-base leading-relaxed text-muted-foreground text-pretty">{description}</p>
     </header>
   )
