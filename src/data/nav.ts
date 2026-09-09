@@ -1,6 +1,6 @@
 export const NAV = [
   { href: "/", label: "Обзор", hint: "Цели и дедлайн YPP" },
-  { href: "/vault", label: "Сейф", hint: "Пароли и ключи" },
+  { href: "/vault", label: "База паролей", hint: "Ключи и заметки" },
   { href: "/niches", label: "Ниши", hint: "Высокий CPM, EN-аудитория" },
   { href: "/tools", label: "Инструменты", hint: "Каталог и MCP" },
   { href: "/plan", label: "План на 6 месяцев", hint: "Бот, агенты, касса" },

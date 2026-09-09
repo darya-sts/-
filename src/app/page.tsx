@@ -38,7 +38,7 @@ export default function HomePage() {
                 Каталог инструментов
               </Button>
               <Button variant="outline" render={<Link href="/vault" />}>
-                Сейф паролей
+                База паролей
               </Button>
             </div>
           </div>

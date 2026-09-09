@@ -38,7 +38,7 @@ export function VaultLogin({ mode, busy, error, onSubmit }: VaultLoginProps) {
         <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
           {isSetup ? <ShieldCheck className="size-4" /> : <Lock className="size-4" />}
         </div>
-        <CardTitle>{isSetup ? "Создать сейф" : "Открыть сейф"}</CardTitle>
+        <CardTitle>{isSetup ? "Создать базу паролей" : "Открыть базу паролей"}</CardTitle>
         <CardDescription>
           {isSetup
             ? "Мастер-пароль остаётся только в памяти вкладки. Без него записи не расшифровать."
@@ -78,7 +78,7 @@ export function VaultLogin({ mode, busy, error, onSubmit }: VaultLoginProps) {
           ) : null}
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <Button disabled={busy || mismatch} type="submit">
-            {busy ? "Шифрование…" : isSetup ? "Создать сейф" : "Разблокировать"}
+            {busy ? "Шифрование…" : isSetup ? "Создать базу" : "Разблокировать"}
           </Button>
         </form>
       </CardContent>

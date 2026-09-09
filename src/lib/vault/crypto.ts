@@ -85,7 +85,7 @@ export async function decryptItems(
     asBuffer(b64ToBytes(blob.ciphertext))
   )
   const parsed: unknown = JSON.parse(new TextDecoder().decode(plaintext))
-  if (!Array.isArray(parsed)) throw new Error("Некорректное содержимое сейфа")
+  if (!Array.isArray(parsed)) throw new Error("Некорректное содержимое базы паролей")
   return parsed as VaultItem[]
 }
 

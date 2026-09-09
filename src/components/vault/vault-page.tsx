@@ -42,7 +42,7 @@ export function VaultPage() {
 
   const persist = useCallback(async (next: VaultItem[]) => {
     const password = passwordRef.current
-    if (!password) throw new Error("Сейф заблокирован")
+    if (!password) throw new Error("База паролей заблокирована")
     const blob = await encryptItems(next, password)
     saveVaultBlob(blob)
     setItems(next)
@@ -63,7 +63,7 @@ export function VaultPage() {
       markSessionUnlocked()
       setUnlocked(true)
     } catch {
-      setError("Неверный мастер-пароль или повреждённый сейф")
+      setError("Неверный мастер-пароль или повреждённая база")
     } finally {
       setBusy(false)
     }
@@ -155,7 +155,7 @@ export function VaultPage() {
   if (!isClient) {
     return (
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
-        <p className="text-sm text-muted-foreground">Загрузка сейфа…</p>
+        <p className="text-sm text-muted-foreground">Загрузка базы паролей…</p>
       </main>
     )
   }
@@ -163,8 +163,8 @@ export function VaultPage() {
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8 sm:py-12">
       <PageHeader
-        kicker="Локальный сейф"
-        title="Password Vault"
+        kicker="Локальное хранилище"
+        title="База паролей"
         description="Пароли, ключи и заметки шифруются AES-256-GCM в браузере и лежат только в localStorage. Мастер-пароль никуда не сохраняется."
       />
 

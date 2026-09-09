@@ -45,6 +45,6 @@ export function clearVaultSession(): void {
 
 export function parseImportedVault(json: string): EncryptedVault {
   const parsed: unknown = JSON.parse(json)
-  if (!isEncryptedVault(parsed)) throw new Error("Файл не похож на сейф Forge Mill")
+  if (!isEncryptedVault(parsed)) throw new Error("Файл не похож на базу паролей Forge Mill")
   return parsed
 }
