@@ -1,0 +1,339 @@
+import type { AgentInfra, AgentRecord, AgentsCatalog } from "../lib/agents/types"
+
+const REPO: Pick<AgentInfra, "repoName" | "repoUrl" | "branch" | "commit"> = {
+  repoName: "darya-sts/-",
+  repoUrl: "https://github.com/darya-sts/-",
+  branch: "cursor/media-factory-3d2b",
+  commit: "6b1e95c",
+}
+
+function infra(
+  path: string,
+  ports: string[],
+  services: string[],
+  memory: Pick<AgentInfra, "memoryKind" | "memoryVolume" | "memoryState">,
+  env: AgentInfra["env"] = "prod"
+): AgentInfra {
+  return {
+    ...REPO,
+    serverPath: path,
+    env,
+    ports,
+    services,
+    ...memory,
+  }
+}
+
+export const AGENTS_CATALOG: AgentsCatalog = {
+  scannedAt: "2026-09-09T10:30:00.000Z",
+  source: "workspace-scan",
+  agents: [
+    {
+      id: "task-bot",
+      name: "TaskBot",
+      summary: "Эмуляция ИИ-агента в разделе Задачи: чек-листы, статусы, память.",
+      description:
+        "Клиентский агент Forge Mill. Разбивает задачу на чек-лист, закрывает пункты, читает ключи из Базы паролей и снимки памяти из localStorage. Работает без бэкенда.",
+      status: "active",
+      version: "1.1.0",
+      createdAt: "2026-09-09",
+      updatedAt: "2026-09-09",
+      memoryConnected: true,
+      cursorPath: "src/lib/tasks/bot.ts",
+      tree: ["src/lib/tasks/bot.ts", "src/lib/tasks/memory.ts", "src/lib/tasks/types.ts", "src/components/tasks/task-chat.tsx"],
+      skills: [
+        {
+          id: "breakdown",
+          name: "Разбить на подзадачи",
+          description: "Строит чек-лист из описания задачи.",
+          active: true,
+          params: "intent: breakdown",
+          content: "detectIntent: /(разбей|подзадач|чек-лист)/ → breakdownTask()",
+        },
+        {
+          id: "execute",
+          name: "Выполнить задачу",
+          description: "Закрывает открытые пункты чек-листа от имени бота.",
+          active: true,
+          params: "intent: execute",
+          content: "executeTask() помечает пункты completedBy: bot и статус review.",
+        },
+        {
+          id: "memory-lookup",
+          name: "Поиск в памяти",
+          description: "Ищет похожие снимки задач перед ответом.",
+          active: true,
+          params: "findRelatedMemory(task)",
+          content: "Сравнивает слова заголовка с forgemill-task-memory.",
+        },
+      ],
+      rules: [
+        {
+          id: "static-only",
+          name: "Только эмуляция API",
+          priority: 1,
+          active: true,
+          text: "Реальных вызовов внешних LLM нет. Если ключ найден в Vault — сообщить и продолжить эмуляцию.",
+        },
+        {
+          id: "status-order",
+          name: "Порядок статусов",
+          priority: 2,
+          active: true,
+          text: "new → planned → in_progress → rework → review → done | cancelled.",
+        },
+      ],
+      files: [
+        {
+          path: "src/lib/tasks/bot.ts",
+          language: "ts",
+          content: `export class TaskBot {
+  detectIntent(command: string): BotIntent {
+    const value = command.toLowerCase()
+    if (/(разбей|подзадач)/.test(value)) return "breakdown"
+    if (/(выполни|сделай)/.test(value)) return "execute"
+    if (/(вопрос|уточн)/.test(value)) return "question"
+    return "update"
+  }
+}`,
+        },
+      ],
+      infra: infra("/opt/my_services/forge-mill-src", ["8081"], ["forge-mill", "localStorage", "IndexedDB"], {
+        memoryKind: "long",
+        memoryVolume: "localStorage · forgemill-task-memory",
+        memoryState: "подключена",
+      }),
+    },
+    {
+      id: "marvinbot",
+      name: "MarvinBot",
+      summary: "Студия дайджестов Telegram и статей на live VPS.",
+      description:
+        "MarvinBot Studio на app1.neurosolutions.pro: черновики постов, Inbox и статьи. API на :3001, веб — статический кабинет.",
+      status: "active",
+      version: "0.4.0",
+      createdAt: "2026-09-07",
+      updatedAt: "2026-09-09",
+      memoryConnected: true,
+      cursorPath: "src/app/marvinbot",
+      tree: ["src/app/marvinbot/page.tsx", "marvinbot-api/", "docker-compose.yml"],
+      skills: [
+        { id: "digest", name: "Дайджест TG", description: "Собрать выпуск в Inbox, не в паблик.", active: true, params: "channel: inbox", content: "Черновик → Inbox → кнопка «в канал»." },
+        { id: "article", name: "Статья", description: "Каркас статьи из утверждённого лонга.", active: true, params: "format: long", content: "Не публикует сам, ждёт approve." },
+      ],
+      rules: [
+        { id: "no-autopost", name: "Без автопостинга в паблик", priority: 1, active: true, text: "В канал только после кнопки «в канал»." },
+      ],
+      files: [
+        {
+          path: "docker-compose.yml",
+          language: "yml",
+          content: `services:
+  forge-mill:
+    ports: ["8081:8080"]
+  marvinbot-api:
+    ports: ["3001:3001"]`,
+        },
+      ],
+      infra: infra("/opt/my_services/forge-mill-src", ["8081", "3001"], ["forge-mill", "marvinbot-api", "postgres", "redis"], {
+        memoryKind: "short",
+        memoryVolume: "API + Redis",
+        memoryState: "подключена на VPS",
+      }),
+    },
+    {
+      id: "cursor-agent",
+      name: "Cursor Agent",
+      summary: "Облачный агент Cursor: правки репозитория, PR, деплой кабинета.",
+      description:
+        "Агент в Cursor Cloud на ветке cursor/media-factory-3d2b. Читает AGENTS.md, скилы walkthrough-artifacts, пишет в GitHub. Прямого REST API из статического фронта нет.",
+      status: "active",
+      version: "cloud",
+      createdAt: "2026-08-28",
+      updatedAt: "2026-09-09",
+      memoryConnected: true,
+      cursorPath: "AGENTS.md",
+      tree: ["AGENTS.md", ".cursor/", "src/data/mcp.ts"],
+      skills: [
+        { id: "edit-repo", name: "Правки репозитория", description: "Коммит и push в рабочую ветку.", active: true, params: "git", content: "Не force-push, не merge PR без запроса." },
+        { id: "walkthrough", name: "Артефакты проверки", description: "Скриншоты и видео в /opt/cursor/artifacts.", active: true, params: "skill: walkthrough-artifacts", content: "Доказательства после UI-изменений." },
+      ],
+      rules: [
+        { id: "agents-md", name: "AGENTS.md", priority: 1, active: true, text: "Keep copy specific. Do not invent live CPM or payout numbers — change src/data/ instead." },
+        { id: "channel", name: "Правило канала", priority: 2, active: true, text: "Voice: specific, numeric, no hype. Audience: US/UK solopreneurs. [VERIFY] у цифр." },
+      ],
+      files: [
+        { path: "AGENTS.md", language: "md", content: "# Forge Mill\n\nPlaybook app for a YouTube / X / Telegram content factory.\nKeep copy specific. Do not invent live CPM or payout numbers — change `src/data/` instead." },
+      ],
+      infra: infra("/workspace", [], ["cursor-cloud", "github"], {
+        memoryKind: "both",
+        memoryVolume: "чат + .cursor/memory",
+        memoryState: "сессия агента",
+      }, "dev"),
+    },
+    {
+      id: "architect",
+      name: "Architect",
+      summary: "Mindmap агентов и ботов на странице Архитектура.",
+      description: "Карта связей фабрики: боты, MCP, каналы. На live — React Flow. В GitHub-дереве страница может отсутствовать, на VPS есть.",
+      status: "development",
+      version: "0.2.0",
+      createdAt: "2026-09-08",
+      updatedAt: "2026-09-09",
+      memoryConnected: false,
+      cursorPath: "src/app/architecture/page.tsx",
+      tree: ["src/app/architecture/page.tsx", "src/architecture/store.ts", "src/components/architecture/"],
+      skills: [
+        { id: "mindmap", name: "Mindmap", description: "Узлы и рёбра графа фабрики.", active: true, params: "@xyflow/react", content: "Редактирование графа в браузере, persist zustand." },
+      ],
+      rules: [
+        { id: "no-wipe", name: "Не затирать live-дерево", priority: 1, active: true, text: "Деплой только overlay. Не rsync GitHub поверх MarvinBot/Architecture/auth." },
+      ],
+      files: [
+        { path: "src/architecture/store.ts", language: "ts", content: `"use client"\nimport { create } from "zustand"\nimport { persist } from "zustand/middleware"` },
+      ],
+      infra: infra("/opt/my_services/forge-mill-src", ["8081"], ["forge-mill", "xyflow"], {
+        memoryKind: "none",
+        memoryVolume: "—",
+        memoryState: "не подключена",
+      }),
+    },
+    {
+      id: "researcher",
+      name: "Исследователь",
+      summary: "Ресёрч ниши и конкурентов через Brave Search MCP.",
+      description: "По теме из Notion собирает 3 конкурента, спрос и цифру в хук. Любая ставка CPM — с пометкой [VERIFY].",
+      status: "active",
+      version: "1.0.0",
+      createdAt: "2026-08-01",
+      updatedAt: "2026-09-01",
+      memoryConnected: false,
+      cursorPath: "src/data/beginner-factory.ts",
+      tree: ["src/data/beginner-factory.ts", "src/data/mcp.ts"],
+      skills: [
+        { id: "brave", name: "Brave Search", description: "Поиск конкурентов и фактчек.", active: true, params: "MCP: brave-search", content: "Не публикует и не додумывает живые цифры рекламы." },
+      ],
+      rules: [
+        { id: "verify", name: "[VERIFY]", priority: 1, active: true, text: "Рядом с цифрой CPM/цены всегда [VERIFY] или источник." },
+      ],
+      files: [
+        { path: "src/data/beginner-factory.ts", language: "ts", content: `name: "Исследователь",\njob: "По теме из Notion собирает 3 конкурента, спрос, цифру в хук и помечает [VERIFY]."` },
+      ],
+      infra: infra("/workspace", [], ["Cursor", "Brave Search MCP", "Notion MCP"], {
+        memoryKind: "none",
+        memoryVolume: "—",
+        memoryState: "не подключена",
+      }, "dev"),
+    },
+    {
+      id: "screenwriter",
+      name: "Сценарист",
+      summary: "Сценарий 8–12 мин по правилу канала.",
+      description: "Хук 20 с, 3 блока, CTA на Telegram, дисклеймер при партнёрке. Не плодит 40 Shorts из абзаца.",
+      status: "active",
+      version: "1.0.0",
+      createdAt: "2026-08-01",
+      updatedAt: "2026-09-01",
+      memoryConnected: true,
+      cursorPath: "src/data/mcp.ts",
+      tree: ["src/data/mcp.ts", "src/data/beginner-factory.ts"],
+      skills: [
+        { id: "script", name: "Сценарий лонга", description: "8–12 минут с таймкодами.", active: true, params: "length: 8-12m", content: "Плюс два хука Shorts и тезис для X." },
+      ],
+      rules: [
+        { id: "channel-voice", name: "Голос фабрики", priority: 1, active: true, text: "specific, numeric, no hype, no unlock-your-potential. US/UK solopreneurs, dollars, ET." },
+      ],
+      files: [
+        { path: "src/data/mcp.ts", language: "txt", content: `Voice: specific, numeric, no hype.\nNever invent prices or legal claims.\nAlways [VERIFY] next to figures.` },
+      ],
+      infra: infra("/workspace", [], ["Cursor", "Notion"], {
+        memoryKind: "short",
+        memoryVolume: "правило канала в репозитории",
+        memoryState: "подключена",
+      }, "dev"),
+    },
+    {
+      id: "voice-folder",
+      name: "Голос и папка",
+      summary: "Озвучка ElevenLabs MCP и файл в /factory/audio.",
+      description: "После «ок» по тексту отдаёт wav выбранным voice id. Свой голос — без ElevenLabs, тот же путь.",
+      status: "development",
+      version: "0.9.0",
+      createdAt: "2026-08-01",
+      updatedAt: "2026-08-20",
+      memoryConnected: false,
+      cursorPath: "src/data/mcp.ts",
+      tree: ["src/data/mcp.ts"],
+      skills: [
+        { id: "tts", name: "ElevenLabs TTS", description: "Озвучка утверждённого текста.", active: false, params: "MCP: elevenlabs", content: "Не меняет текст «чтобы лучше звучало» без ок." },
+      ],
+      rules: [
+        { id: "no-rewrite", name: "Не переписывать текст", priority: 1, active: true, text: "Только озвучка согласованного сценария." },
+      ],
+      files: [
+        { path: "src/data/mcp.ts", language: "json", content: `"elevenlabs": { "command": "uvx", "args": ["elevenlabs-mcp"] }` },
+      ],
+      infra: infra("/ContentFactory", [], ["ElevenLabs MCP", "Filesystem MCP"], {
+        memoryKind: "none",
+        memoryVolume: "—",
+        memoryState: "не подключена",
+      }, "dev"),
+    },
+    {
+      id: "tg-packager",
+      name: "Упаковщик Telegram",
+      summary: "Чеклист и файл в Inbox-бота, ждёт кнопку «в канал».",
+      description: "Из лонга делает чеклист и один файл в Inbox. Не шлёт в канал сам и не дублирует текст на X.",
+      status: "active",
+      version: "1.0.0",
+      createdAt: "2026-08-01",
+      updatedAt: "2026-09-07",
+      memoryConnected: true,
+      cursorPath: "src/data/beginner-factory.ts",
+      tree: ["src/data/beginner-factory.ts"],
+      skills: [
+        { id: "inbox", name: "Inbox Telegram", description: "Черновик с кнопками.", active: true, params: "n8n Telegram", content: "Community Telegram MCP — по желанию." },
+      ],
+      rules: [
+        { id: "human-approve", name: "Человек жмёт «в канал»", priority: 1, active: true, text: "Автопостинг в паблик запрещён на старте." },
+      ],
+      files: [
+        { path: "src/data/beginner-factory.ts", language: "ts", content: `name: "Упаковщик Telegram",\nnotThis: "Не шлёт в канал сам. Не дублирует тот же текст на X."` },
+      ],
+      infra: infra("/opt/my_services/forge-mill-src", ["3001"], ["n8n", "marvinbot-api"], {
+        memoryKind: "short",
+        memoryVolume: "Inbox-чат",
+        memoryState: "подключена",
+      }),
+    },
+    {
+      id: "friday-analyst",
+      name: "Аналитик пятницы",
+      summary: "Еженедельный отчёт CTR, удержания и TG без смены ниши.",
+      description: "CTR и удержание 30 с на YouTube, qualified impressions на X, прирост TG, клики партнёрок. Стоп-лист слабых форматов.",
+      status: "inactive",
+      version: "0.8.0",
+      createdAt: "2026-08-01",
+      updatedAt: "2026-08-15",
+      memoryConnected: false,
+      cursorPath: "src/data/beginner-factory.ts",
+      tree: ["src/data/beginner-factory.ts", "src/data/finance.ts"],
+      skills: [
+        { id: "yt-read", name: "YouTube Data read", description: "Только чтение статистики.", active: false, params: "MCP YouTube Data", content: "С месяца 3. Upload — через Studio." },
+      ],
+      rules: [
+        { id: "no-niche-hop", name: "Не прыгать по нишам", priority: 1, active: true, text: "Не оптимизировать «под алгоритм» сменой ниши каждую неделю." },
+      ],
+      files: [
+        { path: "src/data/beginner-factory.ts", language: "ts", content: `name: "Аналитик пятницы",\nconnect: "YouTube Studio вручную + Notion."` },
+      ],
+      infra: infra("/workspace", [], ["YouTube Studio", "Notion"], {
+        memoryKind: "none",
+        memoryVolume: "—",
+        memoryState: "не подключена",
+      }, "dev"),
+    },
+  ],
+}
+
+export const AGENT_IDS = AGENTS_CATALOG.agents.map((agent) => agent.id)
