@@ -10,6 +10,7 @@ import { OrchestratorPanel } from "@/components/prompts/orchestrator-panel"
 import { ReportPanel } from "@/components/prompts/report-panel"
 import { IconTip } from "@/components/agents/icon-tip"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { DEFAULT_AGENTS, DEFAULT_MEMORY_ITEMS, DEFAULT_PUBLICATIONS, PROMPT_AGENTS, PROMPT_MODELS } from "@/data/prompts"
 import { composePrompt, slugify } from "@/lib/prompts/compose"
@@ -17,7 +18,8 @@ import { loadDirectionProfiles, removeDirection, resetDirection, upsertDirection
 import { downloadText, openPrintablePdf } from "@/lib/prompts/download"
 import { adviseOrchestrator, type OrchestratorAdvice } from "@/lib/prompts/orchestrator"
 import { createPrompt, delegatePrompt, loadPromptTasks, loadPrompts, updatePrompt } from "@/lib/prompts/store"
-import type { DelegateInput, DirectionProfile, PromptRecord, PromptTaskRecord } from "@/lib/prompts/types"
+import { TIER_LABEL, type DelegateInput, type DirectionProfile, type PromptRecord, type PromptTaskRecord } from "@/lib/prompts/types"
+import { TEXTAREA_CLASS } from "@/components/tasks/field-styles"
 
 type Tab = "create" | "history" | "map"
 type Step = "compose" | "delegate" | "done"
@@ -281,14 +283,11 @@ export function PromptStudio() {
           <ComposePanel
             request={request}
             title={title}
-            body={body}
-            recommendedTier={advice?.modelTier ?? delegate.modelTier}
             directions={directions}
             profiles={profiles}
             busy={busy}
             onRequest={setRequest}
             onTitle={setTitle}
-            onBody={setBody}
             onToggleDirection={toggleDirection}
             onCompose={onCompose}
           />
@@ -302,6 +301,25 @@ export function PromptStudio() {
               onSwitch={() => applyResolution("switch")}
               onMix={() => applyResolution("mix")}
             />
+          ) : null}
+
+          {body ? (
+            <Card>
+              <CardContent>
+                <label className="grid gap-1 text-sm">
+                  <span className="text-xs text-muted-foreground">
+                    Готовый промт · тариф: <strong>{TIER_LABEL[advice?.modelTier ?? delegate.modelTier]}</strong>
+                  </span>
+                  <textarea
+                    className={`${TEXTAREA_CLASS} min-h-40 font-mono text-xs`}
+                    value={body}
+                    onChange={(event) => setBody(event.target.value)}
+                    aria-label="Текст промта"
+                    data-testid="prompt-body"
+                  />
+                </label>
+              </CardContent>
+            </Card>
           ) : null}
 
           {body && prompt ? (
