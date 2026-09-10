@@ -5,13 +5,16 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      ALLOWED_ROOTS: ${ALLOWED_ROOTS:-/opt/my_services}
+    ports:
+      - "8082:8082"
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
       # Host projects (override PROJECT_HOST_ROOT for local Cursor workspace)
       - ${PROJECT_HOST_ROOT:-/opt/my_services}:${PROJECT_HOST_ROOT:-/opt/my_services}:ro
-    environment:
-      ALLOWED_ROOTS: ${ALLOWED_ROOTS:-/opt/my_services}
+    healthcheck:
       test:
         [
           "CMD",
