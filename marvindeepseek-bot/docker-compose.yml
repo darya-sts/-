@@ -5,9 +5,13 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    ports:
-      - "8082:8082"
-    healthcheck:
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      # Host projects (override PROJECT_HOST_ROOT for local Cursor workspace)
+      - ${PROJECT_HOST_ROOT:-/opt/my_services}:${PROJECT_HOST_ROOT:-/opt/my_services}:ro
+    environment:
+      ALLOWED_ROOTS: ${ALLOWED_ROOTS:-/opt/my_services}
       test:
         [
           "CMD",
@@ -19,3 +23,10 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+    networks:
+      - default
+      - agent-shared
+
+networks:
+  agent-shared:
+    external: true
