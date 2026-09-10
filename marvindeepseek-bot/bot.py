@@ -1,142 +1,89 @@
-"""Telegram chat bot backed by DeepSeek (Q&A only)."""
+"""MarvinDeepSeekBot entrypoint: DeepSeek + Memory MCP + files/voice generation."""
 
 from __future__ import annotations
 
 import logging
-import os
-from collections import defaultdict, deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from logging.handlers import RotatingFileHandler
 from threading import Thread
 
-import httpx
 from telegram import Update
-from telegram.constants import ChatAction, ParseMode
 from telegram.ext import (
     Application,
+    CallbackQueryHandler,
     CommandHandler,
-    ContextTypes,
     MessageHandler,
     filters,
 )
 
-logging.basicConfig(
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    level=logging.INFO,
+from config import (
+    LOGS_DIR,
+    MEMORY_MCP_ENABLED,
+    MEMORY_MCP_URL,
+    PORT,
+    TELEGRAM_BOT_TOKEN,
+    TELEGRAM_CHUNK_LIMIT,
 )
-log = logging.getLogger("marvindeepseek")
-# Avoid leaking bot token in httpx / telegram request URLs
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
-logging.getLogger("telegram.ext.ExtBot").setLevel(logging.WARNING)
-
-TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"].strip()
-DEEPSEEK_API_KEY = os.environ["DEEPSEEK_API_KEY"].strip()
-DEEPSEEK_API_BASE = os.getenv("DEEPSEEK_API_BASE", "https://api.deepseek.com").rstrip("/")
-DEEPSEEK_API_MODEL = os.getenv("DEEPSEEK_API_MODEL", "deepseek-chat").strip()
-PORT = int(os.getenv("PORT", "8082"))
-MAX_HISTORY = int(os.getenv("MAX_HISTORY", "12"))
-SYSTEM_PROMPT = os.getenv(
-    "SYSTEM_PROMPT",
-    "You are MarvinDeepSeekBot, a helpful assistant. "
-    "Answer clearly and concisely in the user's language.",
+from handlers.commands import (
+    cmd_clear,
+    cmd_file,
+    cmd_help,
+    cmd_memory,
+    cmd_remember,
+    cmd_start,
 )
+from handlers.files import handle_document, handle_photo
+from handlers.projects import cmd_cat, cmd_grep, cmd_projects, cmd_stats, cmd_tree
+from handlers.text import handle_prompt_format_callback, handle_text
+from handlers.voice import handle_voice
+from services import memory_service
 
-_raw_users = os.getenv("ALLOWED_USERS", "").strip()
-ALLOWED_USERS = {int(x) for x in _raw_users.replace(";", ",").split(",") if x.strip().isdigit()}
-
-# chat_id -> recent messages for context
-_history: dict[int, deque] = defaultdict(lambda: deque(maxlen=MAX_HISTORY))
-
-
-def _allowed(user_id: int | None) -> bool:
-    if not ALLOWED_USERS:
-        return True
-    return user_id is not None and user_id in ALLOWED_USERS
+LOG_FILE = LOGS_DIR / "bot.log"
+READER_LOG_FILE = LOGS_DIR / "reader.log"
 
 
-async def ask_deepseek(messages: list[dict[str, str]]) -> str:
-    payload = {
-        "model": DEEPSEEK_API_MODEL,
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT}, *messages],
-        "temperature": 0.7,
-    }
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        resp = await client.post(
-            f"{DEEPSEEK_API_BASE}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-    return data["choices"][0]["message"]["content"].strip()
+def setup_logging() -> logging.Logger:
+    logger = logging.getLogger("marvindeepseek")
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
 
+    sh = logging.StreamHandler()
+    sh.setFormatter(formatter)
+    logger.addHandler(sh)
 
-async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user = update.effective_user
-    if not _allowed(user.id if user else None):
-        await update.message.reply_text("Доступ ограничен.")
-        return
-    chat_id = update.effective_chat.id
-    _history[chat_id].clear()
-    await update.message.reply_text(
-        "Привет! Я MarvinDeepSeekBot.\n"
-        "Пишите вопросы в этот чат — отвечу через DeepSeek.\n"
-        "Команда /clear сбрасывает историю диалога."
+    fh = RotatingFileHandler(
+        LOG_FILE, maxBytes=2_000_000, backupCount=5, encoding="utf-8"
     )
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+    reader_logger = logging.getLogger("marvindeepseek.reader_audit")
+    reader_logger.setLevel(logging.INFO)
+    rh = RotatingFileHandler(
+        READER_LOG_FILE, maxBytes=2_000_000, backupCount=5, encoding="utf-8"
+    )
+    rh.setFormatter(formatter)
+    reader_logger.addHandler(rh)
+    reader_logger.propagate = False
+
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("telegram.ext.ExtBot").setLevel(logging.WARNING)
+    return logger
 
 
-async def cmd_clear(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user = update.effective_user
-    if not _allowed(user.id if user else None):
-        return
-    _history[update.effective_chat.id].clear()
-    await update.message.reply_text("История диалога очищена.")
-
-
-async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.message or not update.message.text:
-        return
-    user = update.effective_user
-    if not _allowed(user.id if user else None):
-        await update.message.reply_text("Доступ ограничен.")
-        return
-
-    chat_id = update.effective_chat.id
-    text = update.message.text.strip()
-    if not text:
-        return
-
-    await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
-    hist = _history[chat_id]
-    hist.append({"role": "user", "content": text})
-
-    try:
-        answer = await ask_deepseek(list(hist))
-    except Exception:
-        log.exception("DeepSeek request failed")
-        hist.pop()  # drop failed user turn
-        await update.message.reply_text(
-            "Не удалось получить ответ от DeepSeek. Попробуйте ещё раз."
-        )
-        return
-
-    hist.append({"role": "assistant", "content": answer})
-    # Telegram hard limit ~4096; keep margin
-    if len(answer) > 4000:
-        answer = answer[:3990] + "…"
-    try:
-        await update.message.reply_text(answer, parse_mode=ParseMode.MARKDOWN)
-    except Exception:
-        await update.message.reply_text(answer)
+log = setup_logging()
 
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         if self.path.rstrip("/") in ("", "/health"):
-            body = b'{"status":"ok","service":"marvindeepseek-bot"}\n'
+            mem = b"true" if memory_service.memory_client() else b"false"
+            body = (
+                b'{"status":"ok","service":"marvindeepseek-bot","memory":'
+                + mem
+                + b',"files":true}'
+            )
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
@@ -157,17 +104,33 @@ def start_health_server() -> None:
 
 
 def main() -> None:
-    if not TELEGRAM_BOT_TOKEN or not DEEPSEEK_API_KEY:
-        raise SystemExit("TELEGRAM_BOT_TOKEN and DEEPSEEK_API_KEY are required")
+    if not TELEGRAM_BOT_TOKEN:
+        raise SystemExit("TELEGRAM_BOT_TOKEN is required")
     start_health_server()
+
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("file", cmd_file))
     app.add_handler(CommandHandler("clear", cmd_clear))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
+    app.add_handler(CommandHandler("memory", cmd_memory))
+    app.add_handler(CommandHandler("remember", cmd_remember))
+    app.add_handler(CommandHandler("projects", cmd_projects))
+    app.add_handler(CommandHandler("tree", cmd_tree))
+    app.add_handler(CommandHandler("cat", cmd_cat))
+    app.add_handler(CommandHandler("grep", cmd_grep))
+    app.add_handler(CommandHandler("stats", cmd_stats))
+    app.add_handler(CallbackQueryHandler(handle_prompt_format_callback, pattern=r"^prompt_fmt:"))
+    app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+
     log.info(
-        "Starting MarvinDeepSeekBot model=%s allowlist=%s",
-        DEEPSEEK_API_MODEL,
-        sorted(ALLOWED_USERS) if ALLOWED_USERS else "open",
+        "Starting MarvinDeepSeekBot memory=%s url=%s chunk_limit=%s files=on project_reader=on",
+        "on" if MEMORY_MCP_ENABLED else "off",
+        MEMORY_MCP_URL if MEMORY_MCP_ENABLED else "-",
+        TELEGRAM_CHUNK_LIMIT,
     )
     app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
